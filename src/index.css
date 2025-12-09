@@ -1,0 +1,70 @@
+:root {
+  /* Brand Colors */
+  --primary-color: #1677ff;
+  --primary-hover: #4096ff;
+  --primary-active: #0958d9;
+
+  /* Status Colors (IT Dashboard Standard) */
+  --status-success: #52c41a;
+  --status-warning: #faad14;
+  --status-error: #f5222d;
+  --status-inactive: #bfbfbf;
+
+  /* Layout Colors */
+  --bg-layout: #f0f2f5;
+  --bg-component: #ffffff;
+  --bg-sidebar: #001529;
+
+  /* Text Colors */
+  --text-primary: #000000e0;
+  --text-secondary: #000000a6;
+  --text-tertiary: #00000073;
+
+  /* Borders */
+  --border-color: #d9d9d9;
+  --border-radius-base: 6px;
+
+  /* Topology Specific */
+  --node-bg: #ffffff;
+  --node-border: #d9d9d9;
+  --node-selected: #1677ff;
+  --edge-default: #b1b1b7;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  background-color: var(--bg-layout);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Scrollbar styling for a cleaner look */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #bfbfbf;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
