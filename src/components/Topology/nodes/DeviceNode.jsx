@@ -1,26 +1,32 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { Typography, Badge } from 'antd';
+import { Typography } from 'antd';
+import { CloudServerOutlined, SafetyCertificateOutlined, DatabaseOutlined, ApartmentOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
-const getIconPath = (type) => {
+const getIcon = (type) => {
+    const style = { fontSize: 32, color: 'var(--text-primary)' };
     switch (type) {
-        case 'cloud': return '/icons/icon_cloud_v2.png';
-        case 'firewall': return '/icons/icon_firewall_v2.png';
+        case 'cloud': return <CloudServerOutlined style={{ ...style, color: 'var(--accent-cyan)' }} />;
+        case 'firewall': return <SafetyCertificateOutlined style={{ ...style, color: 'var(--accent-purple)' }} />;
         case 'switch': 
         case 'core-switch':
-        case 'agg-switch': return '/icons/icon_switch_v2.png';
-        case 'server': return '/icons/icon_server_v2.png';
+        case 'agg-switch': return <ApartmentOutlined style={{ ...style, color: 'var(--primary-color)' }} />;
+        case 'server': return <CloudServerOutlined style={style} />;
         case 'database': 
-        case 'storage': return '/icons/icon_database_v2.png';
-        case 'router': return '/icons/icon_switch_v2.png'; 
-        default: return '/icons/icon_server_v2.png';
+        case 'storage': return <DatabaseOutlined style={{ ...style, color: '#faad14' }} />;
+        default: return <CloudServerOutlined style={style} />;
     }
 };
 
 const DeviceNode = ({ data, selected }) => {
-    const isOnline = data.status === 'online';
+    const isOnline = data.status === 'online' || data.status === 'success';
+    const isWarning = data.status === 'warning';
+    
+    let statusColor = 'var(--status-error)';
+    if (isOnline) statusColor = 'var(--status-success)';
+    if (isWarning) statusColor = 'var(--status-warning)';
     
     return (
         <div style={{ position: 'relative', textAlign: 'center' }}>
@@ -28,62 +34,54 @@ const DeviceNode = ({ data, selected }) => {
             
             {/* Glassmorphism Card Container */}
             <div style={{
-                width: 120,
-                padding: '12px 8px',
-                borderRadius: '12px',
-                background: 'rgba(255, 255, 255, 0.65)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
-                border: `1px solid ${selected ? '#1677ff' : 'rgba(255, 255, 255, 0.5)'}`,
+                width: 140,
+                padding: '16px 12px',
+                borderRadius: '16px',
+                background: 'var(--glass-panel-bg)',
+                backdropFilter: 'var(--glass-blur)',
+                WebkitBackdropFilter: 'var(--glass-blur)',
+                border: `1px solid ${selected ? 'var(--primary-color)' : 'var(--glass-panel-border)'}`,
                 boxShadow: selected 
-                    ? '0 8px 32px rgba(22, 119, 255, 0.25)' 
-                    : '0 4px 16px rgba(31, 38, 135, 0.08)',
+                    ? '0 0 20px rgba(22, 119, 255, 0.4)' 
+                    : 'var(--glass-panel-shadow)',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 8,
-                transform: selected ? 'translateY(-2px)' : 'none'
+                gap: 12,
+                transform: selected ? 'translateY(-4px) scale(1.05)' : 'none'
             }}>
-                {/* Status Indicator Dot */}
+                {/* Status Glow */}
                 <div style={{
                     position: 'absolute',
-                    top: 8,
-                    right: 8,
+                    top: 10,
+                    right: 10,
                     width: 8,
                     height: 8,
                     borderRadius: '50%',
-                    backgroundColor: isOnline ? '#52c41a' : '#ff4d4f',
-                    boxShadow: isOnline ? '0 0 6px #52c41a' : '0 0 6px #ff4d4f'
+                    backgroundColor: statusColor,
+                    boxShadow: `0 0 10px ${statusColor}`
                 }} />
 
-                {/* 3D Icon Image */}
+                {/* React Icon instead of Image for sharpness */}
                 <div style={{ 
-                    width: 64, 
-                    height: 64, 
+                    width: 50, 
+                    height: 50, 
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
-                    marginBottom: 4
+                    background: 'rgba(255,255,255,0.05)',
+                    borderRadius: '50%'
                 }}>
-                    <img 
-                        src={getIconPath(data.type)} 
-                        alt={data.type} 
-                        style={{ 
-                            width: '100%', 
-                            height: '100%', 
-                            objectFit: 'contain',
-                            filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))'
-                        }} 
-                    />
+                    {getIcon(data.type)}
                 </div>
 
                 {/* Labels */}
                 <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                    <Text strong style={{ fontSize: 12, lineHeight: 1.2, marginBottom: 2 }} ellipsis>
+                    <Text strong style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 2 }} ellipsis>
                         {data.label}
                     </Text>
-                    <Text type="secondary" style={{ fontSize: 10 }}>{data.ip}</Text>
+                    <Text style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{data.ip}</Text>
                 </div>
             </div>
 

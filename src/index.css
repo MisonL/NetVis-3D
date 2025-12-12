@@ -1,45 +1,53 @@
 :root {
-  /* Brand Colors */
+  /* --- Brand Colors (Cyberpunk/Neon) --- */
   --primary-color: #1677ff;
-  --primary-hover: #4096ff;
-  --primary-active: #0958d9;
+  --primary-glow: rgba(22, 119, 255, 0.5);
 
-  /* Status Colors (IT Dashboard Standard) */
+  --accent-cyan: #00f0ff;
+  --accent-cyan-glow: rgba(0, 240, 255, 0.4);
+
+  --accent-purple: #bc13fe;
+  --accent-purple-glow: rgba(188, 19, 254, 0.4);
+
+  /* --- Status Colors (Bright Neon) --- */
   --status-success: #52c41a;
-  --status-warning: #faad14;
-  --status-error: #f5222d;
-  --status-inactive: #bfbfbf;
+  --status-success-glow: rgba(82, 196, 26, 0.4);
 
-  /* Layout Colors */
-  --bg-layout: #f0f2f5;
-  --bg-component: #ffffff;
-  --bg-sidebar: #001529;
+  --status-warning: #fadb14; /* Brighter yellow */
+  --status-warning-glow: rgba(250, 219, 20, 0.4);
 
-  /* Text Colors */
-  --text-primary: #000000e0;
-  --text-secondary: #000000a6;
-  --text-tertiary: #00000073;
+  --status-error: #ff4d4f;
+  --status-error-glow: rgba(255, 77, 79, 0.4);
 
-  /* Borders */
-  --border-color: #d9d9d9;
-  --border-radius-base: 6px;
+  /* --- Backgrounds (Dark Deep Space) --- */
+  --bg-app: #000208; /* Almost black */
+  --bg-layout: #050b14; /* Very dark blue */
+  --bg-sidebar: #020408;
 
-  /* Topology Specific */
-  --node-bg: #ffffff;
-  --node-border: #d9d9d9;
-  --node-selected: #1677ff;
-  --edge-default: #b1b1b7;
+  /* --- Glassmorphism Surfaces --- */
+  --glass-panel-bg: rgba(22, 33, 50, 0.7);
+  --glass-panel-border: rgba(255, 255, 255, 0.08);
+  --glass-panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  --glass-blur: blur(12px);
+
+  /* --- Text --- */
+  --text-primary: #e6f7ff;
+  --text-secondary: rgba(230, 247, 255, 0.65);
+  --text-tertiary: rgba(230, 247, 255, 0.45);
 }
 
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  background-color: var(--bg-layout);
+  font-family: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-app);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
 }
 
 #root {
@@ -49,22 +57,217 @@ body {
   flex-direction: column;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-/* Scrollbar styling for a cleaner look */
+/* --- Scrollbar Styling (Futuristic) --- */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.02);
 }
 ::-webkit-scrollbar-thumb {
-  background: #bfbfbf;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #999;
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+}
+
+/* --- Transition Utilities --- */
+.fade-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+.fade-exit {
+  opacity: 1;
+}
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 200ms;
+}
+
+/* --- Ant Design Overrides for Glass Theme --- */
+
+.ant-layout {
+  background: var(--bg-layout) !important;
+}
+
+.ant-layout-sider {
+  background: var(--bg-sidebar) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Glass Cards */
+.ant-card {
+  background: var(--glass-panel-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-panel-border) !important;
+  color: var(--text-primary) !important;
+}
+.ant-card-head {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: var(--text-primary) !important;
+}
+.ant-card-head-title {
+  color: var(--text-primary) !important;
+}
+
+/* Glass Tables */
+.ant-table {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+}
+.ant-table-thead > tr > th {
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  transition: background 0.3s;
+}
+.ant-table-tbody > tr:hover > td {
+  background: rgba(22, 119, 255, 0.08) !important;
+}
+.ant-pagination-item a {
+  color: var(--text-primary) !important;
+}
+.ant-pagination-item-active {
+  background: transparent !important;
+  border-color: var(--primary-color) !important;
+}
+
+/* Typography Overrides */
+h1,
+h2,
+h3,
+h4,
+h5 {
+  color: var(--text-primary) !important;
+}
+.ant-typography {
+  color: var(--text-secondary);
+}
+.ant-statistic-title {
+  color: var(--text-tertiary) !important;
+}
+.ant-statistic-content {
+  color: var(--text-primary) !important;
+}
+
+/* Drawer Override */
+.ant-drawer-content {
+  background-color: #0b1420 !important; /* Fallback */
+  background: rgba(11, 20, 32, 0.95) !important; /* Deep Modal */
+  backdrop-filter: blur(16px);
+}
+.ant-drawer-header {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+.ant-drawer-title {
+  color: var(--text-primary) !important;
+}
+.ant-descriptions-item-label {
+  color: var(--text-secondary) !important;
+}
+.ant-descriptions-item-content {
+  color: var(--text-primary) !important;
+}
+
+/* --- Animations --- */
+.pulse-circle {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 77, 79, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0); }
+}
+
+/* --- Premium Title Effects --- */
+.ant-typography h1,
+.ant-typography h2,
+.ant-typography h3,
+.ant-typography h4 {
+  color: var(--text-primary) !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* --- Enhanced Statistic Cards --- */
+.ant-statistic-content-value {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+}
+
+.ant-statistic-title {
+  font-size: 13px !important;
+  letter-spacing: 0.03em;
+}
+
+/* --- Card Hover Effects --- */
+.ant-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+.ant-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(22, 119, 255, 0.1) !important;
+}
+
+/* --- Progress Bar Glow --- */
+.ant-progress-bg {
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* --- Button Enhancements --- */
+
+.ant-btn {
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.02);
+  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.ant-btn-primary {
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.04);
+}
+
+.ant-btn-primary:not(:disabled):hover {
+  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+/* --- Tag/Badge Enhancements --- */
+.ant-tag {
+  font-weight: 600;
+  border: none;
+  line-height: 20px;
+}
+
+/* --- Moved from TopologyControlPanel --- */
+.glass-select .ant-select-selector {
+    background-color: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: var(--text-primary) !important;
+    border-radius: 6px !important;
+}
+.glass-select .ant-select-selection-placeholder {
+    color: var(--text-tertiary) !important;
+}
+.glass-segmented {
+    background: rgba(0,0,0,0.2) !important;
+    color: var(--text-secondary);
+}
+.glass-segmented .ant-segmented-item-selected {
+    background-color: rgba(255,255,255,0.1) !important;
+    color: #fff !important;
 }

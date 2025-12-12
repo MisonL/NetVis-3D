@@ -1,103 +1,87 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import ReactFlow, { 
     Background, 
     Controls, 
-    MiniMap, 
     useNodesState, 
     useEdgesState, 
     addEdge 
 } from 'reactflow';
-import { Drawer, Descriptions, Tag, Typography, Button } from 'antd';
-import { CloseOutlined } from '@ant-design/icons';
 import 'reactflow/dist/style.css';
-import DeviceNode from './nodes/DeviceNode';
-import NetworkEdge from './edges/NetworkEdge';
-import { mockDevices } from '../../utils/mockData';
+import { nodeTypes, edgeTypes, initialPositions } from './flowConfig';
+import { useSimulation } from '../../services/SimulationService';
+import { useSettings } from '../../context/SettingsContext';
+import DeviceDetailDrawer from './DeviceDetailDrawer';
+import TopologyControlPanel2D from './TopologyControlPanel2D';
 
-const { Title, Text } = Typography;
-
-const nodeTypes = {
-  device: DeviceNode,
-};
-
-const edgeTypes = {
-  network: NetworkEdge,
-};
-
-const initialNodes = mockDevices.map((device) => {
-    let x = 0;
-    let y = 0;
-
-    // Hardcoded layout for the "Small Data Center" demo
-    // Canvas Center roughly x=400
-    switch (device.id) {
-        case 'cloud': x = 400; y = 0; break;
-        case 'fw-1': x = 400; y = 150; break;
-        case 'core-sw': x = 400; y = 300; break;
-        
-        case 'agg-sw-1': x = 200; y = 450; break;
-        case 'agg-sw-2': x = 600; y = 450; break;
-
-        case 'web-1': x = 50; y = 600; break;
-        case 'web-2': x = 200; y = 600; break;
-        case 'web-3': x = 350; y = 600; break;
-
-        case 'db-master': x = 500; y = 600; break;
-        case 'db-slave': x = 620; y = 600; break;
-        case 'storage-1': x = 750; y = 600; break;
-        
-        default: x = 0; y = 0;
-    }
-
-    return {
-        id: device.id,
-        type: 'device',
-        position: { x, y },
-        data: { ...device }
-    };
-});
-
-const initialEdges = [
-    // Internet -> FW
-    { id: 'e-cloud-fw', source: 'cloud', target: 'fw-1', type: 'network', data: { traffic: 1 } },
-    // FW -> Core
-    { id: 'e-fw-core', source: 'fw-1', target: 'core-sw', type: 'network', data: { traffic: 1, label: 'Uplink' } },
+const TopologyCanvas = ({ onSwitchTo3D }) => {
+    const { settings } = useSettings();
+    const { devices } = useSimulation(true, settings.refreshRate);
     
-    // Core -> Agg
-    { id: 'e-core-agg1', source: 'core-sw', target: 'agg-sw-1', type: 'network', data: { traffic: 1, label: '10G' } },
-    { id: 'e-core-agg2', source: 'core-sw', target: 'agg-sw-2', type: 'network', data: { traffic: 1, label: '10G' } },
-
-    // Agg 1 -> Web
-    { id: 'e-agg1-w1', source: 'agg-sw-1', target: 'web-1', type: 'network', data: { traffic: 0 } },
-    { id: 'e-agg1-w2', source: 'agg-sw-1', target: 'web-2', type: 'network', data: { traffic: 1, label: 'Load' } }, // High traffic
-    { id: 'e-agg1-w3', source: 'agg-sw-1', target: 'web-3', type: 'network', data: { traffic: 0 } },
-
-    // Agg 2 -> Data
-    { id: 'e-agg2-dbm', source: 'agg-sw-2', target: 'db-master', type: 'network', data: { traffic: 1 } },
-    { id: 'e-agg2-dbs', source: 'agg-sw-2', target: 'db-slave', type: 'network', data: { traffic: 0, label: 'Repl' } },
-    { id: 'e-agg2-sto', source: 'agg-sw-2', target: 'storage-1', type: 'network', data: { traffic: 0 } },
-];
-
-const TopologyCanvas = () => {
-    const [nodes, , onNodesChange] = useNodesState(initialNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-    const [selectedDevice, setSelectedDevice] = useState(null);
+    // Convert simulation devices to ReactFlow nodes
+    const [nodes, setNodes, onNodesChange] = useNodesState([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    
+    // Store ID instead of object to avoid synchronization effects
+    const [selectedDeviceId, setSelectedDeviceId] = useState(null);
     const [drawerVisible, setDrawerVisible] = useState(false);
+    
+    // ReactFlow Instance
+    const [rfInstance, setRfInstance] = useState(null);
+
+    // Derive selected device from current devices list
+    const selectedDevice = devices.find(d => d.id === selectedDeviceId) || null;
+
+    // Initial Load & Updates
+    useEffect(() => {
+        // 1. Map Nodes
+        const flowNodes = devices.map(dev => ({
+            id: dev.id,
+            type: 'device',
+            position: initialPositions[dev.id] || { x: 0, y: 0 },
+            data: { ...dev } // Pass full device data including metrics/status
+        }));
+        setNodes(flowNodes);
+
+        // 2. Map Edges (static topology for demo)
+        const flowEdges = [
+             { id: 'e-cloud-fw', source: 'cloud', target: 'fw-1', type: 'network', data: { traffic: 1 }, animated: true },
+             { id: 'e-fw-core', source: 'fw-1', target: 'core-sw', type: 'network', data: { traffic: 1, label: 'Uplink' }, animated: true },
+             { id: 'e-core-agg1', source: 'core-sw', target: 'agg-sw-1', type: 'network', data: { traffic: 1, label: '10G' }, animated: true },
+             { id: 'e-core-agg2', source: 'core-sw', target: 'agg-sw-2', type: 'network', data: { traffic: 1, label: '10G' }, animated: true },
+             { id: 'e-agg1-w1', source: 'agg-sw-1', target: 'web-1', type: 'network', data: { traffic: 0 } },
+             { id: 'e-agg1-w2', source: 'agg-sw-1', target: 'web-2', type: 'network', data: { traffic: 1, label: 'Load' }, animated: true },
+             { id: 'e-agg1-w3', source: 'agg-sw-1', target: 'web-3', type: 'network', data: { traffic: 0 } },
+             { id: 'e-agg2-dbm', source: 'agg-sw-2', target: 'db-master', type: 'network', data: { traffic: 1 }, animated: true },
+             { id: 'e-agg2-dbs', source: 'agg-sw-2', target: 'db-slave', type: 'network', data: { traffic: 0, label: 'Repl' } },
+             { id: 'e-agg2-sto', source: 'agg-sw-2', target: 'storage-1', type: 'network', data: { traffic: 0 } },
+        ];
+        
+        // Dynamic styles for edges based on theme
+        const edgeStyles = {
+            stroke: settings.theme === 'dark' ? '#555' : '#b1b1b7',
+            strokeWidth: 2
+        };
+
+        const styledEdges = flowEdges.map(e => ({
+            ...e,
+            style: edgeStyles
+        }));
+
+        setEdges(styledEdges);
+
+    }, [devices, setNodes, setEdges, settings.theme]);
+    
+    // REMOVED: Effect that caused the error (updating selectedDevice synchronously)
 
     const onConnect = useCallback((params) => setEdges((eds) => addEdge({ ...params, type: 'network' }, eds)), [setEdges]);
 
     const onNodeClick = useCallback((event, node) => {
-        setSelectedDevice(node.data);
+        setSelectedDeviceId(node.id);
         setDrawerVisible(true);
     }, []);
 
-    const closeDrawer = () => {
-        setDrawerVisible(false);
-        setSelectedDevice(null);
-    };
-
     return (
-        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+        <div style={{ width: '100%', height: '100%', position: 'relative', background: settings.theme === 'dark' ? '#000' : '#f5f5f5' }}>
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -108,55 +92,58 @@ const TopologyCanvas = () => {
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 fitView
+                onInit={setRfInstance}
             >
-                <Background color="#aaa" gap={16} />
-                <Controls />
-                <MiniMap style={{ height: 120 }} zoomable pannable />
+                <Background 
+                    color={settings.theme === 'dark' ? '#333' : '#ccc'} 
+                    gap={20} 
+                    size={1}
+                />
+                <Controls 
+                    position="bottom-right"
+                    style={{ 
+                        background: 'rgba(0,0,0,0.6)', 
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px',
+                    }}
+                    showZoom={true}
+                    showFitView={true}
+                    showInteractive={false}
+                />
+                {/* MiniMap removed for cleaner look */}
             </ReactFlow>
 
-            <Drawer
-                title="设备详情"
-                placement="right"
-                onClose={closeDrawer}
+            <TopologyControlPanel2D 
+                devices={devices}
+                onSwitchTo3D={onSwitchTo3D}
+                onSearchSelect={(id) => {
+                    const node = nodes.find(n => n.id === id);
+                    if (node) {
+                        setSelectedDeviceId(node.id);
+                        setDrawerVisible(true);
+                        // Optional: Center view on node
+                        if (rfInstance) {
+                            rfInstance.setCenter(node.position.x, node.position.y, { zoom: 1.2, duration: 800 });
+                        }
+                    }
+                }}
+                onFitView={() => {
+                    if (rfInstance) {
+                        rfInstance.fitView({ padding: 0.2, duration: 800 });
+                    }
+                }}
+            />
+
+            <DeviceDetailDrawer 
                 open={drawerVisible}
-                width={400}
-                mask={false}
-                extra={
-                  <Button type="text" icon={<CloseOutlined />} onClick={closeDrawer} />
-                }
-            >
-                {selectedDevice && (
-                    <>
-                        <div style={{ marginBottom: 24, textAlign: 'center' }}>
-                            <Title level={4}>{selectedDevice.label}</Title>
-                            <Tag color={selectedDevice.status === 'online' ? 'success' : 'error'}>
-                                {selectedDevice.status.toUpperCase()}
-                            </Tag>
-                        </div>
-                        <Descriptions column={1} bordered size="small">
-                            <Descriptions.Item label="IP 地址">{selectedDevice.ip}</Descriptions.Item>
-                            <Descriptions.Item label="设备类型">{selectedDevice.type}</Descriptions.Item>
-                            <Descriptions.Item label="位置">{selectedDevice.location || 'Unknown'}</Descriptions.Item>
-                            <Descriptions.Item label="运行时间">{selectedDevice.uptime || '-'}</Descriptions.Item>
-                            <Descriptions.Item label="当前流量">{selectedDevice.traffic || '-'}</Descriptions.Item>
-                        </Descriptions>
-                        
-                        {selectedDevice.alerts && selectedDevice.alerts.length > 0 && (
-                             <div style={{ marginTop: 24 }}>
-                                <Text type="danger" strong>告警信息:</Text>
-                                <ul style={{ color: '#ff4d4f', paddingLeft: 20 }}>
-                                    {selectedDevice.alerts.map((alert, idx) => (
-                                        <li key={idx}>{alert}</li>
-                                    ))}
-                                </ul>
-                             </div>
-                        )}
-                    </>
-                )}
-            </Drawer>
+                onClose={() => {
+                    setDrawerVisible(false);
+                    setSelectedDeviceId(null);
+                }}
+                device={selectedDevice}
+            />
         </div>
     );
 };
-
 
 export default TopologyCanvas;

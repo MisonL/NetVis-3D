@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="dbGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Database cylinder top -->
+  <ellipse cx="32" cy="12" rx="24" ry="8" fill="url(#dbGrad)" opacity="0.9"/>
+  <!-- Database body -->
+  <path d="M8 12v40c0 4.4 10.7 8 24 8s24-3.6 24-8V12c0 4.4-10.7 8-24 8S8 16.4 8 12z" fill="url(#dbGrad)" opacity="0.85"/>
+  <!-- Stripes -->
+  <ellipse cx="32" cy="28" rx="24" ry="6" fill="#1a1a2e" opacity="0.3"/>
+  <ellipse cx="32" cy="44" rx="24" ry="6" fill="#1a1a2e" opacity="0.3"/>
+  <!-- Highlight -->
+  <ellipse cx="32" cy="12" rx="18" ry="5" fill="#fde68a" opacity="0.3"/>
+</svg>

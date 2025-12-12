@@ -1,7 +1,7 @@
 <div align="center">
-  <h1>🌐 NetVis 3D</h1>
+  <h1>🌐 NetVis Pro (Sci-Fi Edition)</h1>
   <p>
-    <strong>基于 React + Three.js 的企业级网络拓扑可视化平台</strong>
+    <strong>基于 React + Three.js 的好莱坞级网络拓扑可视化平台</strong>
   </p>
   <p>
     <a href="https://vitejs.dev/" target="_blank">
@@ -21,45 +21,55 @@
 
 ---
 
-## ✨ 核心特性 (Features)
+## ✨ 核心特性 (Features) (Phase 3 Updated)
 
 <table align="center">
   <tr>
-    <td align="center" width="33%">
+    <td align="center" width="25%">
       <h3>🌍 3D 沉浸视图</h3>
       <p>基于力导向图的交互式 3D 拓扑，支持自由缩放、旋转与平移，提供身临其境的监控体验。</p>
     </td>
-    <td align="center" width="33%">
-      <h3>📊 实时数据监控</h3>
-      <p>集成设备状态、流量指标与告警信息，直观展示网络健康状况与故障节点。</p>
+    <td align="center" width="25%">
+      <h3>📊 实时仪表盘</h3>
+      <p>全新的系统级 Dashboard，实时监控总流量、在线率与告警状态，配合呼吸灯光效。</p>
     </td>
-    <td align="center" width="33%">
-      <h3>🎨 多维可视化</h3>
-      <p>支持 2D/3D 视图一键切换，内置星空、网格等多种主题与图标风格，满足不同场景需求。</p>
+    <td align="center" width="25%">
+      <h3>💎 玻璃拟态设计</h3>
+      <p>全站采用 Deep Blue Glassmorphism 风格，配合半透明磨砂与霓虹点缀，极具科技感。</p>
+    </td>
+    <td align="center" width="25%">
+      <h3>🤖 智能模拟</h3>
+      <p>内置 SimulationService，提供逼真的随机流量波动与设备状态变更模拟。</p>
     </td>
   </tr>
 </table>
 
 ## 📸 功能概览
 
-- **双视图支持**：无缝切换 3D 空间视图与 2D 平面视图
-- **高级搜索**：支持按 IP、设备名称模糊搜索并自动定位
+- **视图系统**：
+  - **仪表盘 (Dashboard)**：核心指标一目了然
+  - **3D 拓扑**：空间化展示网络层级 (Cloud -> Core -> Aggregation -> Access)
+  - **2D 拓扑**：扁平化视图，与 3D 共享实时状态，**✨ 新增完整控制面板**
+  - **设备资产**：实时资产清单，支持快速定位
+- **高级交互**：
+  - **辉光特效 (Bloom)**：可配置的高性能后处理光效，**🌈 支持亮度调节**
+  - **自动漫游**：平滑的摄像机自动旋转
+  - **快速定位**：搜索设备后通过摄像机平滑飞行至目标
 - **主题系统**：
-  - **背景**：🌌 星空 | 🕸️ 网格 | ⬛ 纯色 | ☀️ 亮色
-  - **图标**：💠 拟真 | 🆔 经典 | 🧊 几何
-- **交互控制**：支持鼠标左键平移/右键旋转，滚轮缩放
+  - **背景**：🌌 星空 | 🕸️ 暗色网格 | ☀️ 亮色网格 | ⬛ 纯色（支持自定义）
+  - **图标**：💠 拟真 | 🆔 经典（重制 SVG） | 🧊 几何
 
 ## 🚀 快速开始 (Quick Start)
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/MisonL/NetVis-3D.git
-
-# 2. 安装依赖
+# 1. 安装依赖
 npm install
 
-# 3. 启动开发服务器
+# 2. 启动开发服务器
 npm run dev
+
+# 3. 运行自动化测试
+npm run test:run
 
 # 4. 构建生产版本
 npm run build
@@ -69,49 +79,35 @@ npm run build
 
 ```
 src/
-├── 🧩 components/      # UI 组件库
-│   ├── DeviceList/     # 设备清单与检索
-│   ├── Layout/         # 应用主框架
-│   ├── Settings/       # 全局配置面板
-│   └── Topology/       # 核心拓扑画布 (2D/3DCanvas)
-├── 🎣 hooks/           # 自定义 Hooks (useDevices, etc.)
-├── 📡 services/        # API 数据服务层
-├── 🎨 styles/          # 主题 Token 与全局样式
-└── 🛠️ utils/           # 工具函数与 Mock 数据
+├── 🧩 components/
+│   ├── Dashboard/      # [NEW] 系统概览仪表盘
+│   ├── DeviceList/     # 设备资产管理
+│   ├── Layout/         # 玻璃拟态主框架
+│   ├── Settings/       # 全局偏好设置
+│   └── Topology/       # 核心拓扑引擎 (2D/3D + Controls)
+├── ⚛️ context/         # 全局状态 (SettingsContext)
+├── 📡 services/        # 数据模拟与API层 (SimulationService)
+├── 🎨 index.css        # 全局变量与 Antd 样式覆盖
+└── 🧪 tests/           # 自动化测试配置
 ```
 
 ## 🔌 数据接入指南
 
-本项目支持 **Mock 模式** 与 **真实 API 模式** 无缝切换。
+本项目内置了强大的 **模拟器 (SimulationService)**，默认开启。如需接入真实后端：
 
-### 1. 环境变量配置
-
-复制 `.env.example` 为 `.env`：
-
-```properties
-# 后端接口地址
-VITE_API_BASE_URL=http://api.your-domain.com/v1
-
-# 数据源开关 (false 为接入真实数据)
-VITE_USE_MOCK_DATA=false
-```
-
-### 2. 接口规范
-
-需实现以下 RESTful 接口（参考 `src/utils/mockData.js`）：
-
-| 方法 | 路径            | 描述                             |
-| ---- | --------------- | -------------------------------- |
-| GET  | `/api/devices`  | 获取设备列表数据                 |
-| GET  | `/api/topology` | 获取拓扑节点(nodes)与链路(links) |
+1. 修改 `.env` 从 `VITE_USE_MOCK_DATA=true` 改为 `false`
+2. 参考 `src/services/api.js` 实现对应的后端接口：
+   - `/api/devices`: 返回设备列表
+   - `/api/topology`: 返回节点与连线关系
 
 ## 🛠️ 技术栈清单
 
-- **核心框架**: [React 18](https://react.dev/) + [Vite](https://vitejs.dev/)
-- **UI 组件库**: [Ant Design 5](https://ant.design/)
-- **可视化引擎**: [Three.js](https://threejs.org/) + [react-force-graph](https://github.com/vasturiano/react-force-graph)
-- **状态管理**: React Hooks + Context
+- **核心框架**: React 18 + Vite 7
+- **UI 组件库**: Ant Design 6 (Dark Theme Algorithm)
+- **3D 引擎**: Three.js + React Force Graph 3D
+- **流程图**: React Flow (2D View)
+- **测试框架**: Vitest + React Testing Library
 
 ## 📝 开源协议
 
-MIT License &copy; 2024 NetVis 3D Team
+MIT License &copy; 2024 NetVis Pro Team

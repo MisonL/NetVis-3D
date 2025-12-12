@@ -1,13 +1,36 @@
 import React, { useState } from 'react';
-import { Table, Tag, Input, Space, Card, Typography, Button, Skeleton, Alert } from 'antd';
+import { Table, Tag, Input, Space, Card, Typography, Button, Alert } from 'antd';
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
-import { useDevices } from '../../hooks/useDevices';
+import { useSimulation } from '../../services/SimulationService';
+import { useSettings } from '../../context/SettingsContext';
 
 const { Title } = Typography;
 
+const GlassCard = ({ children, title, extra, ...props }) => (
+    <Card 
+        variant="borderless" 
+        title={title ? <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{title}</span> : null}
+        extra={extra}
+        style={{ 
+            height: '100%', 
+            borderRadius: 16,
+            background: 'var(--glass-panel-bg)',
+            backdropFilter: 'var(--glass-blur)',
+            border: '1px solid var(--glass-panel-border)',
+            boxShadow: 'var(--glass-panel-shadow)',
+            ...props.style
+        }}
+        {...props}
+    >
+        {children}
+    </Card>
+);
+
 const DeviceList = ({ onLocate }) => {
     const [searchText, setSearchText] = useState('');
-    const { devices, loading, error, refresh } = useDevices();
+    const { settings } = useSettings();
+    const { devices } = useSimulation(true, settings.refreshRate); 
+    const loading = false; 
 
     // Filter logic
     const filteredData = devices.filter(device => 
@@ -20,10 +43,9 @@ const DeviceList = ({ onLocate }) => {
             title: '设备名称',
             dataIndex: 'label',
             key: 'label',
-            render: (text) => <b>{text}</b>,
+            render: (text) => <b style={{ color: 'var(--text-primary)' }}>{text}</b>,
             sorter: (a, b) => a.label.localeCompare(b.label),
         },
-        // ... existing columns
         {
             title: 'IP 地址',
             dataIndex: 'ip',
@@ -33,7 +55,11 @@ const DeviceList = ({ onLocate }) => {
             title: '类型',
             dataIndex: 'type',
             key: 'type',
-            render: (text) => <Tag color="blue">{text.toUpperCase()}</Tag>,
+            render: (text) => (
+                <Tag color="#1677ff" style={{ border: 'none', background: 'rgba(22, 119, 255, 0.15)' }}>
+                    {text.toUpperCase()}
+                </Tag>
+            ),
             filters: [
                 { text: 'Server', value: 'server' },
                 { text: 'Switch', value: 'switch' },
@@ -48,10 +74,11 @@ const DeviceList = ({ onLocate }) => {
             dataIndex: 'status',
             key: 'status',
             render: (status) => {
-                let color = status === 'online' ? 'success' : 'error';
-                if (status === 'warning') color = 'warning';
+                let color = (status === 'online' || status === 'success') ? '#52c41a' : '#ff4d4f';
+                if (status === 'warning') color = '#faad14';
+                
                 return (
-                    <Tag color={color}>
+                    <Tag color={color} style={{ border: 'none', background: 'transparent', boxShadow: `0 0 8px ${color}40`, fontWeight: 'bold' }}>
                         {status.toUpperCase()}
                     </Tag>
                 );
@@ -59,6 +86,7 @@ const DeviceList = ({ onLocate }) => {
             filters: [
                 { text: 'Online', value: 'online' },
                 { text: 'Offline', value: 'offline' },
+                { text: 'Warning', value: 'warning' },
             ],
             onFilter: (value, record) => record.status === value,
         },
@@ -68,14 +96,26 @@ const DeviceList = ({ onLocate }) => {
             key: 'location',
         },
         {
+            title: '实时流量',
+            dataIndex: 'traffic',
+            key: 'traffic',
+            render: (traffic, record) => (
+                <span style={{ color: 'var(--accent-cyan)', fontFamily: 'monospace' }}>
+                    {record.metrics?.traffic || traffic || '-'}
+                </span>
+            )
+        },
+        {
             title: '操作',
             key: 'action',
             render: (_, record) => (
                 <Space size="middle">
                      <Button 
-                        type="link" 
+                        type="link"
+                        size="small"
                         icon={<SearchOutlined />} 
                         onClick={() => onLocate && onLocate(record.id)}
+                        style={{ color: 'var(--primary-color)' }}
                      >
                         定位
                      </Button>
@@ -85,38 +125,36 @@ const DeviceList = ({ onLocate }) => {
     ];
 
     return (
-        <Card title={<Title level={4} style={{ margin: 0 }}>设备清单</Title>} extra={
-            <Button icon={<ReloadOutlined />} onClick={refresh} loading={loading}>刷新</Button>
-        }>
-            {error && (
-                <Alert 
-                    message="加载失败" 
-                    description={error.message || '无法获取设备数据，请检查网络连接'} 
-                    type="error" 
-                    showIcon 
-                    style={{ marginBottom: 16 }}
-                />
-            )}
-            <div style={{ marginBottom: 16 }}>
+        <GlassCard 
+            title="数据中心设备资产清单 (实时)" 
+            extra={
+                <Button icon={<ReloadOutlined />} onClick={() => {}} loading={loading} type="text" style={{ color: 'var(--text-primary)' }}>
+                    刷新
+                </Button>
+            }
+        >
+            <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Input 
                     placeholder="搜索设备名称或 IP..." 
-                    prefix={<SearchOutlined />} 
+                    prefix={<SearchOutlined style={{ color: 'var(--text-secondary)' }} />} 
                     onChange={e => setSearchText(e.target.value)}
-                    style={{ width: 300 }}
+                    style={{ width: 320, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)' }}
                     allowClear
+                    className="glass-input"
                 />
-                <span style={{ marginLeft: 8, color: '#888' }}>
-                    共 {filteredData.length} 台设备
-                </span>
+                <Tag color="#108ee9" style={{ border: 'none', fontSize: 13, padding: '4px 10px' }}>
+                     共 {filteredData.length} 台设备
+                </Tag>
             </div>
             <Table 
                 columns={columns} 
                 dataSource={filteredData} 
                 rowKey="id"
-                pagination={{ pageSize: 8 }}
+                pagination={{ pageSize: 8, showSizeChanger: false }}
                 loading={loading}
+                className="glass-table"
             />
-        </Card>
+        </GlassCard>
     );
 };
 

@@ -3,6 +3,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import MainLayout from '../MainLayout';
+import { SettingsProvider } from '../../../context/SettingsContext';
 
 // Mock child components to isolate layout testing
 vi.mock('../../Topology/TopologyCanvas3D', () => ({
@@ -16,6 +17,15 @@ vi.mock('../../DeviceList/DeviceList', () => ({
 }));
 vi.mock('../../Settings/Settings', () => ({
     default: () => <div data-testid="settings">Settings Component</div>
+}));
+vi.mock('../../Dashboard/Dashboard', () => ({
+    default: () => <div data-testid="dashboard">Dashboard Component</div>
+}));
+
+// Mock react-transition-group to avoid JSDOM issues
+vi.mock('react-transition-group', () => ({
+    CSSTransition: ({ children }) => <div>{children}</div>,
+    SwitchTransition: ({ children }) => <div>{children}</div>,
 }));
 
 // Mock matchMedia for Layout Sider
@@ -34,24 +44,45 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 describe('Component: MainLayout', () => {
-    it('should render main layout structure', () => {
-        render(<MainLayout />);
-        expect(screen.getByText('NetVis Platform')).toBeInTheDocument();
-        expect(screen.getByText('3D 数据中心可视化平台')).toBeInTheDocument();
-        // Initial view is 3D Topology
+    it('should render dashboard by default', () => {
+        render(
+            <SettingsProvider>
+                <MainLayout />
+            </SettingsProvider>
+        );
+        expect(screen.getByText('NETVIS PRO')).toBeInTheDocument();
+        // Initial view is Dashboard
+        expect(screen.getByTestId('dashboard')).toBeInTheDocument();
+    });
+
+    it('should navigate to 3D Topology', () => {
+        render(
+            <SettingsProvider>
+                <MainLayout />
+            </SettingsProvider>
+        );
+        const menuTopo = screen.getByText('3D 拓扑视图');
+        fireEvent.click(menuTopo);
         expect(screen.getByTestId('topo-3d')).toBeInTheDocument();
     });
 
     it('should navigate to Device List', () => {
-        render(<MainLayout />);
+        render(
+            <SettingsProvider>
+                <MainLayout />
+            </SettingsProvider>
+        );
         const menuDevice = screen.getByText('设备列表');
         fireEvent.click(menuDevice);
         expect(screen.getByTestId('device-list')).toBeInTheDocument();
-        expect(screen.queryByTestId('topo-3d')).not.toBeInTheDocument();
     });
 
     it('should navigate to Settings', () => {
-        render(<MainLayout />);
+        render(
+            <SettingsProvider>
+                <MainLayout />
+            </SettingsProvider>
+        );
         const menuSettings = screen.getByText('系统设置');
         fireEvent.click(menuSettings);
         expect(screen.getByTestId('settings')).toBeInTheDocument();
