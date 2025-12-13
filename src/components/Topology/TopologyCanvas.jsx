@@ -80,8 +80,30 @@ const TopologyCanvas = ({ onSwitchTo3D }) => {
         setDrawerVisible(true);
     }, []);
 
+    const darkThemeStyles = {
+        '--glass-panel-bg': 'rgba(22, 33, 50, 0.75)',
+        '--glass-panel-border': 'rgba(255, 255, 255, 0.1)',
+        '--glass-panel-shadow': '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
+        '--text-primary': '#ffffff',
+        '--text-secondary': 'rgba(255, 255, 255, 0.85)',
+        '--text-tertiary': 'rgba(255, 255, 255, 0.45)',
+        '--primary-color': '#1677ff'
+    };
+
+
+
+    const isDark = settings.canvasTheme2D === 'dark';
+
     return (
-        <div style={{ width: '100%', height: '100%', position: 'relative', background: settings.theme === 'dark' ? '#000' : '#f5f5f5' }}>
+        <div style={{ 
+            width: '100%', 
+            height: '100%', 
+            position: 'relative', 
+            background: isDark 
+                ? 'radial-gradient(circle at center, #1b263b 0%, #0d1117 100%)' // Deep blue-grad to dark
+                : '#f5f5f5',
+            ...isDark ? darkThemeStyles : {}
+        }}>
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -93,11 +115,13 @@ const TopologyCanvas = ({ onSwitchTo3D }) => {
                 edgeTypes={edgeTypes}
                 fitView
                 onInit={setRfInstance}
+                style={{ color: isDark ? '#fff' : 'inherit' }}
             >
                 <Background 
-                    color={settings.theme === 'dark' ? '#333' : '#ccc'} 
-                    gap={20} 
-                    size={1}
+                    color={isDark ? '#4a5568' : '#ccc'} 
+                    gap={24}  
+                    size={1.5}
+                    variant="dots"
                 />
                 <Controls 
                     position="bottom-right"

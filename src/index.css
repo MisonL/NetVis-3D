@@ -26,14 +26,64 @@
 
   /* --- Glassmorphism Surfaces --- */
   --glass-panel-bg: rgba(22, 33, 50, 0.7);
-  --glass-panel-border: rgba(255, 255, 255, 0.08);
+  --glass-panel-border: rgba(255, 255, 255, 0.02);
   --glass-panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
   --glass-blur: blur(12px);
+
+  /* --- Layout Specific Glass --- */
+  --glass-sidebar-bg: rgba(2, 4, 8, 0.6);
+  --glass-header-bg: rgba(5, 11, 20, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.03);
 
   /* --- Text --- */
   --text-primary: #e6f7ff;
   --text-secondary: rgba(230, 247, 255, 0.65);
   --text-tertiary: rgba(230, 247, 255, 0.45);
+}
+
+/* --- Light Mode Overrides --- */
+body.light-mode {
+  --bg-app: #f5f5f5;
+  --bg-layout: #f0f2f5;
+  --bg-sidebar: #ffffff;
+  
+  --glass-panel-bg: rgba(255, 255, 255, 0.75);
+  --glass-panel-border: rgba(0, 0, 0, 0.06);
+  --glass-panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+
+  --glass-sidebar-bg: rgba(255, 255, 255, 0.85);
+  --glass-header-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  
+  --text-primary: #333333;
+  --text-secondary: rgba(0, 0, 0, 0.65);
+  --text-tertiary: rgba(0, 0, 0, 0.45);
+}
+
+/* Glass Dropdown (Dark) */
+.glass-dropdown .ant-select-dropdown {
+    background: rgba(22, 33, 50, 0.9) !important;
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Glass Dropdown (Light) */
+.glass-dropdown-light .ant-select-dropdown {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Glass Select (Light) */
+.glass-select-light .ant-select-selector {
+    background-color: rgba(255,255,255,0.6) !important;
+    border: 1px solid rgba(0,0,0,0.1) !important;
+    color: var(--text-primary) !important;
+    border-radius: 6px !important;
+}
+.glass-select-light .ant-select-selection-placeholder {
+    color: var(--text-tertiary) !important;
 }
 
 body {
@@ -100,7 +150,7 @@ body {
 
 .ant-layout-sider {
   background: var(--bg-sidebar) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid var(--glass-border);
 }
 
 /* Glass Cards */
@@ -111,7 +161,7 @@ body {
   color: var(--text-primary) !important;
 }
 .ant-card-head {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
   color: var(--text-primary) !important;
 }
 .ant-card-head-title {
@@ -126,10 +176,10 @@ body {
 .ant-table-thead > tr > th {
   background: rgba(255, 255, 255, 0.04) !important;
   color: var(--text-secondary) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
 }
 .ant-table-tbody > tr > td {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
   transition: background 0.3s;
 }
 .ant-table-tbody > tr:hover > td {
@@ -270,4 +320,28 @@ h5 {
 .glass-segmented .ant-segmented-item-selected {
     background-color: rgba(255,255,255,0.1) !important;
     color: #fff !important;
+}
+
+/* Professional Table Styles */
+.pro-table .ant-table-thead > tr > th {
+  background: rgba(255, 255, 255, 0.06) !important;
+  font-weight: 600;
+  color: var(--text-primary) !important;
+}
+.pro-table .ant-table-tbody > tr:hover > td {
+  background: rgba(22, 119, 255, 0.15) !important;
+}
+
+/* Tabs Overrides */
+.ant-tabs-tab {
+    color: var(--text-secondary) !important;
+}
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: var(--primary-color) !important;
+}
+.ant-tabs-ink-bar {
+    background: var(--primary-color) !important;
+}
+.ant-form-item-label > label {
+    color: var(--text-secondary) !important;
 }

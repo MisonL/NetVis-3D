@@ -1,11 +1,13 @@
 import React, { useState, useRef } from 'react';
-import { Layout, Menu, Typography, Avatar, Space, Button } from 'antd';
+import { Layout, Menu, Typography, Avatar, Space, Button, Switch } from 'antd';
 import { 
   DeploymentUnitOutlined, 
   UnorderedListOutlined, 
   SettingOutlined,
   UserOutlined,
-  DashboardOutlined
+  DashboardOutlined,
+  SunOutlined,
+  MoonOutlined
 } from '@ant-design/icons';
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import TopologyCanvas3D from '../Topology/TopologyCanvas3D';
@@ -13,11 +15,13 @@ import TopologyCanvas from '../Topology/TopologyCanvas';
 import DeviceList from '../DeviceList/DeviceList';
 import Settings from '../Settings/Settings';
 import Dashboard from '../Dashboard/Dashboard';
+import { useSettings } from '../../context/SettingsContext';
 
 const { Header, Content, Sider } = Layout;
 const { Title } = Typography;
 
 const MainLayout = () => {
+  const { settings, updateSetting } = useSettings();
   const [activeMenu, setActiveMenu] = useState('0');
   const [focusNodeId, setFocusNodeId] = useState(null);
   const nodeRef = useRef(null);
@@ -46,6 +50,8 @@ const MainLayout = () => {
     }
   };
 
+  const isDark = settings.theme === 'dark';
+
   return (
     <Layout style={{ minHeight: '100vh', width: '100vw', background: 'var(--bg-app)' }}>
       {/* --- Glass Sider --- */}
@@ -58,9 +64,9 @@ const MainLayout = () => {
             top: 0, 
             bottom: 0, 
             zIndex: 100,
-            background: 'rgba(2, 4, 8, 0.4)', // Semi-transparent base
-            backdropFilter: 'blur(20px)',     // Heavy blur for glass effect
-            borderRight: '1px solid rgba(255,255,255,0.08)'
+            background: 'var(--glass-sidebar-bg)', 
+            backdropFilter: 'blur(20px)',     
+            borderRight: '1px solid var(--glass-border)'
         }}
       >
         {/* Brand Area */}
@@ -69,7 +75,7 @@ const MainLayout = () => {
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center', 
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
+            borderBottom: '1px solid var(--glass-border)',
             marginBottom: 24,
             background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)'
         }}>
@@ -90,11 +96,11 @@ const MainLayout = () => {
         <div style={{ padding: '0 20px', marginBottom: 32 }}>
              <Space align="center" style={{ 
                  padding: '16px', 
-                 background: 'rgba(255,255,255,0.03)', 
-                 border: '1px solid rgba(255,255,255,0.05)',
+                 background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', 
+                 border: '1px solid var(--glass-border)',
                  borderRadius: 12, 
                  width: '100%',
-                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                 boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
              }}>
                 <Avatar 
                     size="large" 
@@ -102,8 +108,8 @@ const MainLayout = () => {
                     style={{ background: 'linear-gradient(135deg, #1677ff 0%, #00f0ff 100%)' }} 
                 />
                 <div>
-                    <div style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>管理员 (Admin)</div>
-                    <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, marginTop: 2 }}>
+                    <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 14 }}>管理员 (Admin)</div>
+                    <div style={{ color: 'var(--text-tertiary)', fontSize: 11, marginTop: 2 }}>
                         <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#52c41a', marginRight: 4 }}></span>
                         Online
                     </div>
@@ -132,9 +138,9 @@ const MainLayout = () => {
         {/* --- Glass Header --- */}
         <Header style={{ 
           padding: '0 48px', 
-          background: 'rgba(5, 11, 20, 0.65)', 
+          background: 'var(--glass-header-bg)', 
           backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          borderBottom: '1px solid var(--glass-border)',
           height: 80,
           zIndex: 90,
           width: '100%',
@@ -157,13 +163,19 @@ const MainLayout = () => {
                 <Title level={4} style={{ margin: 0, fontWeight: 600, letterSpacing: 0.5, lineHeight: 1.2 }}>
                     数据中心实时监控平台
                 </Title>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
                     Data Center Real-time Monitoring Platform
                 </div>
             </div>
 
             {/* Right Side Buttons */}
-            <Space>
+            <Space size={16}>
+                 <Switch 
+                    checkedChildren={<SunOutlined />}
+                    unCheckedChildren={<MoonOutlined />}
+                    checked={settings.theme === 'light'}
+                    onChange={(checked) => updateSetting('theme', checked ? 'light' : 'dark')}
+                 />
                  <Button type="primary" ghost size="small" style={{ fontSize: 12 }}>帮助文档</Button>
                  <Button type="primary" size="small" style={{ fontSize: 12, background: '#1677ff' }}>联系支持</Button>
             </Space>

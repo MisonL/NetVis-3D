@@ -20,7 +20,7 @@ const TopologyControlPanel2D = ({
 }) => {
     const { settings, updateSetting } = useSettings();
 
-    const isDark = settings.theme === 'dark';
+    const isDark = settings.canvasTheme2D === 'dark'; // Use local canvas theme
     const panelStyle = {
         position: 'absolute',
         top: 16,
@@ -59,7 +59,7 @@ const TopologyControlPanel2D = ({
                 }
                 options={devices.map(n => ({ value: n.id, label: n.label }))}
                 style={{ width: 160 }}
-                classNames={{ popup: 'glass-dropdown' }} 
+                classNames={{ popup: isDark ? 'glass-dropdown' : 'glass-dropdown-light' }} 
                 size="middle"
                 variant="borderless"
                 className={isDark ? "glass-select" : "glass-select-light"}
@@ -85,15 +85,15 @@ const TopologyControlPanel2D = ({
 
             <div style={separatorStyle} />
 
-            {/* Theme Toggle */}
-            <Tooltip title="切换主题">
+            {/* Canvas Theme Toggle */}
+            <Tooltip title="切换背景主题">
                  <Segmented 
                     options={[
                         { label: '暗色', value: 'dark', icon: <BgColorsOutlined /> },
                         { label: '亮色', value: 'light', icon: <SunOutlined /> }
                     ]}
-                    value={settings.theme}
-                    onChange={(val) => updateSetting('theme', val)}
+                    value={settings.canvasTheme2D}
+                    onChange={(val) => updateSetting('canvasTheme2D', val)}
                     size="small"
                     className={isDark ? "glass-segmented" : ""}
                  />

@@ -56,5 +56,10 @@ export const useSimulation = (enabled = true, refreshRate = 5) => {
         return () => clearInterval(intervalId);
     }, [enabled, refreshRate]);
 
-    return { devices };
+    // Expose a way to update devices externally (e.g., from Import)
+    const updateDevices = (newDevices) => {
+        setDevices(newDevices);
+    };
+
+    return { devices, updateDevices };
 };

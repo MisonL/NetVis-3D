@@ -1,0 +1,25 @@
+import { mockDevices } from '../../utils/mockData';
+
+export const deviceApi = {
+    getAll: async () => {
+        // Simulate delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return [...mockDevices];
+    },
+    getById: async (id) => {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        return mockDevices.find(d => d.id === id);
+    },
+    create: async (data) => {
+        console.log('Mock Create:', data);
+        return { id: `mock-${Date.now()}`, ...data };
+    },
+    update: async (id, data) => {
+        console.log('Mock Update:', id, data);
+        return { id, ...data };
+    },
+    delete: async (id) => {
+        console.log('Mock Delete:', id);
+        return { success: true };
+    }
+};

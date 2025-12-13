@@ -59,6 +59,7 @@ const TopologyCanvas3D = ({ focusNodeId, onFocusComplete, onSwitchTo2D }) => {
     // Store ID instead of object to prevent synchronization issues
     const [selectedDeviceId, setSelectedDeviceId] = useState(null);
     const [drawerVisible, setDrawerVisible] = useState(false);
+    const bloomPassRef = useRef(null); // Track the specific bloom pass instance
 
     // Derive selected device from current devices list
     const selectedDevice = devices.find(d => d.id === selectedDeviceId) || null;
@@ -205,26 +206,38 @@ const TopologyCanvas3D = ({ focusNodeId, onFocusComplete, onSwitchTo2D }) => {
 
         } else if (settings.bgMode === 'grid') {
              // Enhanced grid for maximum visibility
-             const gridHelper = new THREE.GridHelper(3000, 80, 0x44aaff, 0x2277cc);
+             const gridHelper = new THREE.GridHelper(3000, 80, 0x66bbff, 0x3388dd);
              gridHelper.position.y = -400; 
              gridHelper.material.transparent = true; 
-             gridHelper.material.opacity = 0.85;
+             gridHelper.material.opacity = 1.0;
              gridHelper.userData = { isBackgroundElement: true }; 
              scene.add(gridHelper);
              // Add a second finer grid for depth
-             const fineGrid = new THREE.GridHelper(3000, 160, 0x225588, 0x113366);
+             const fineGrid = new THREE.GridHelper(3000, 160, 0x336699, 0x114477);
              fineGrid.position.y = -401;
              fineGrid.material.transparent = true;
-             fineGrid.material.opacity = 0.5;
+             fineGrid.material.opacity = 0.6;
              fineGrid.userData = { isBackgroundElement: true };
              scene.add(fineGrid);
              scene.fog = new THREE.FogExp2(0x000510, 0.0004);
         } else if (settings.bgMode === 'light') {
-             const gridHelper = new THREE.GridHelper(3000, 80, 0x888888, 0xaaaaaa);
+             // Stronger main grid
+             const gridHelper = new THREE.GridHelper(3000, 80, 0x444444, 0x999999);
              gridHelper.position.y = -400;
+             gridHelper.material.opacity = 0.9;
+             gridHelper.material.transparent = true;
              gridHelper.userData = { isBackgroundElement: true };
              scene.add(gridHelper);
-             scene.fog = new THREE.FogExp2(0xf0f2f5, 0.0005);
+             
+             // Secondary fine grid for detail and contrast
+             const fineGrid = new THREE.GridHelper(3000, 160, 0x888888, 0xbbbbbb);
+             fineGrid.position.y = -401;
+             fineGrid.material.opacity = 0.5;
+             fineGrid.material.transparent = true;
+             fineGrid.userData = { isBackgroundElement: true };
+             scene.add(fineGrid);
+
+             scene.fog = new THREE.FogExp2(0xf0f2f5, 0.0003); // Lighter fog
         } else {
             scene.fog = null;
         }
@@ -244,44 +257,55 @@ const TopologyCanvas3D = ({ focusNodeId, onFocusComplete, onSwitchTo2D }) => {
         }
     }, []);
 
-    // Bloom Effect implementation with intensity control
+    // Bloom Effect implementation with intensity control and reference tracking
     useEffect(() => {
         if (!fgRef.current) return;
         
         const postProcessingComposer = fgRef.current.postProcessingComposer();
         if (!postProcessingComposer) return;
         
-        // Remove existing bloom passes first to prevent stacking
-        const passesToRemove = [];
-        postProcessingComposer.passes.forEach((pass, index) => {
-            if (pass.constructor.name === 'UnrealBloomPass') {
-                passesToRemove.push(index);
+        // 1. CLEANUP: Remove specifically the pass we added previously
+        if (bloomPassRef.current) {
+            const passIndex = postProcessingComposer.passes.indexOf(bloomPassRef.current);
+            if (passIndex > -1) {
+                postProcessingComposer.passes.splice(passIndex, 1);
             }
-        });
-        // Remove in reverse order to maintain indices
-        passesToRemove.reverse().forEach(index => {
-            postProcessingComposer.passes.splice(index, 1);
-        });
+            bloomPassRef.current = null;
+        }
         
-        if (settings.bloomEnabled) {
+        // 2. SAFETY CHECK: Legacy cleanup (in case older passes persist from previous reloads)
+        // Ensure no other UnrealBloomPass exists to prevent nuclear stacking
+        for (let i = postProcessingComposer.passes.length - 1; i >= 0; i--) {
+            if (postProcessingComposer.passes[i].constructor.name === 'UnrealBloomPass') {
+                postProcessingComposer.passes.splice(i, 1);
+            }
+        }
+
+        // 3. SETUP: Check if we effectively want bloom
+        const isLightMode = settings.bgMode === 'light';
+        const shouldEnableBloom = settings.bloomEnabled && !isLightMode;
+
+        if (shouldEnableBloom) {
              const bloomPass = new UnrealBloomPass();
              bloomPass.strength = settings.bloomIntensity;
              bloomPass.radius = 0.4;
              bloomPass.threshold = 0.2;
+             
              postProcessingComposer.addPass(bloomPass);
+             bloomPassRef.current = bloomPass; // Track usage
         }
         
         return () => {
-            // Cleanup on unmount
-            if (postProcessingComposer) {
-                postProcessingComposer.passes.forEach((pass, index) => {
-                    if (pass.constructor.name === 'UnrealBloomPass') {
-                        postProcessingComposer.passes.splice(index, 1);
-                    }
-                });
-            }
-        };
-    }, [settings.bloomEnabled, settings.bloomIntensity]);
+             // Cleanup on unmount or re-render
+             if (bloomPassRef.current && postProcessingComposer) {
+                 const passIndex = postProcessingComposer.passes.indexOf(bloomPassRef.current);
+                 if (passIndex > -1) {
+                     postProcessingComposer.passes.splice(passIndex, 1);
+                 }
+                 bloomPassRef.current = null;
+             }
+         };
+    }, [settings.bloomEnabled, settings.bloomIntensity, settings.bgMode]);
 
 
     const createTextSprite = useCallback((text, color, fontSize = 36) => {

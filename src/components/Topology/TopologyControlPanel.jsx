@@ -99,34 +99,38 @@ const TopologyControlPanel = ({
             </Tooltip>
 
             {/* Bloom Toggle */}
-            <Tooltip title={settings.bloomEnabled ? "关闭辉光特效" : "开启辉光特效 (高性能)"}>
+            <Tooltip title={settings.bgMode === 'light' ? "亮色模式下辉光特效不可用" : (settings.bloomEnabled ? "关闭辉光特效" : "开启辉光特效 (高性能)")}>
                 <Button 
                     type="text"
                     icon={<ThunderboltOutlined />}
+                    disabled={settings.bgMode === 'light'}
                     style={{ 
-                        color: settings.bloomEnabled ? '#faad14' : 'var(--text-tertiary)',
-                        background: settings.bloomEnabled ? 'rgba(250,173,20,0.15)' : 'transparent',
-                        boxShadow: settings.bloomEnabled ? '0 0 8px rgba(250,173,20,0.4)' : 'none'
+                        color: settings.bgMode === 'light' ? 'rgba(0,0,0,0.25)' : (settings.bloomEnabled ? '#faad14' : 'var(--text-tertiary)'),
+                        background: settings.bgMode === 'light' ? 'transparent' : (settings.bloomEnabled ? 'rgba(250,173,20,0.15)' : 'transparent'),
+                        boxShadow: (settings.bloomEnabled && settings.bgMode !== 'light') ? '0 0 8px rgba(250,173,20,0.4)' : 'none',
+                        cursor: settings.bgMode === 'light' ? 'not-allowed' : 'pointer'
                     }}
                     onClick={() => updateSetting('bloomEnabled', !settings.bloomEnabled)}
                 />
             </Tooltip>
 
             {/* Bloom Intensity Slider - only show when enabled */}
+            {/* Bloom Intensity Slider - only show when enabled */}
             {settings.bloomEnabled && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ color: '#faad14', fontSize: 11 }}>亮度</Text>
+                    <Text style={{ color: settings.bgMode === 'light' ? 'rgba(0,0,0,0.25)' : '#faad14', fontSize: 11 }}>亮度</Text>
                     <Slider
                         min={0.1}
                         max={1.5}
                         step={0.1}
+                        disabled={settings.bgMode === 'light'}
                         value={settings.bloomIntensity}
                         onChange={(val) => updateSetting('bloomIntensity', val)}
                         style={{ width: 60, margin: 0 }}
                         styles={{ 
-                            track: { background: '#faad14' }, 
-                            rail: { background: 'rgba(250,173,20,0.1)' },
-                            handle: { borderColor: '#faad14' }
+                            track: { background: settings.bgMode === 'light' ? 'rgba(0,0,0,0.1)' : '#faad14' }, 
+                            rail: { background: settings.bgMode === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(250,173,20,0.1)' },
+                            handle: { borderColor: settings.bgMode === 'light' ? 'rgba(0,0,0,0.25)' : '#faad14' }
                         }}
                     />
                 </div>

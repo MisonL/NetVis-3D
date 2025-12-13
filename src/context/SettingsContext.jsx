@@ -22,7 +22,7 @@ const STORAGE_KEYS = {
 export const SettingsProvider = ({ children }) => {
 
     const [settings, setSettings] = useState(() => ({
-        theme: localStorage.getItem(STORAGE_KEYS.THEME) || 'dark',
+        theme: localStorage.getItem(STORAGE_KEYS.THEME) || 'light',
         bgMode: localStorage.getItem(STORAGE_KEYS.BG_MODE) || 'starfield',
         solidBgColor: localStorage.getItem(STORAGE_KEYS.SOLID_BG_COLOR) || '#1a1a2e',
         iconTheme: localStorage.getItem(STORAGE_KEYS.ICON_THEME) || 'premium',
@@ -33,6 +33,7 @@ export const SettingsProvider = ({ children }) => {
         textureQuality: localStorage.getItem(STORAGE_KEYS.TEXTURE_QUALITY) || 'high',
         bloomEnabled: localStorage.getItem(STORAGE_KEYS.BLOOM_ENABLED) === 'true',
         bloomIntensity: parseFloat(localStorage.getItem(STORAGE_KEYS.BLOOM_INTENSITY) || 0.6),
+        canvasTheme2D: localStorage.getItem('netvis_canvasTheme2D') || 'light', // Independent 2D theme
     }));
 
     useEffect(() => {
@@ -47,6 +48,16 @@ export const SettingsProvider = ({ children }) => {
         localStorage.setItem(STORAGE_KEYS.TEXTURE_QUALITY, settings.textureQuality);
         localStorage.setItem(STORAGE_KEYS.BLOOM_ENABLED, settings.bloomEnabled);
         localStorage.setItem(STORAGE_KEYS.BLOOM_INTENSITY, settings.bloomIntensity);
+        localStorage.setItem('netvis_canvasTheme2D', settings.canvasTheme2D);
+
+        // Apply global theme class (Only affects body/UI, not necessarily canvas if decoupled)
+        if (settings.theme === 'light') {
+            document.body.classList.add('light-mode');
+            document.body.classList.remove('dark-mode');
+        } else {
+            document.body.classList.add('dark-mode');
+            document.body.classList.remove('light-mode');
+        }
     }, [settings]);
 
     const updateSetting = (key, value) => {
