@@ -12,6 +12,7 @@ import {
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import TopologyCanvas3D from '../Topology/TopologyCanvas3D';
 import TopologyCanvas from '../Topology/TopologyCanvas';
+import HeaderTitle from './HeaderTitle';
 import DeviceList from '../DeviceList/DeviceList';
 import Settings from '../Settings/Settings';
 import Dashboard from '../Dashboard/Dashboard';
@@ -134,7 +135,7 @@ const MainLayout = () => {
         />
       </Sider>
       
-      <Layout style={{ marginLeft: 260, marginTop: 16, height: 'calc(100vh - 16px)', overflow: 'hidden', background: 'transparent' }}>
+      <Layout style={{ marginLeft: 260, height: '100vh', overflow: 'hidden', background: 'transparent' }}>
         {/* --- Glass Header --- */}
         <Header style={{ 
           padding: '0 48px', 
@@ -147,28 +148,14 @@ const MainLayout = () => {
           boxSizing: 'border-box',
           display: 'flex', 
           alignItems: 'center',
-          justifyContent: 'flex-end', // Align buttons to right
-          position: 'relative' // Anchor for absolute title
+          justifyContent: 'flex-end',
+          position: 'relative',
+          overflow: 'visible', // Critical: Allow title to overflow if needed
         }}>
-            {/* Absolute Centered Title - The "Safety Zone" */}
-            <div style={{
-                position: 'absolute',
-                left: '50%',
-                top: '58%',
-                transform: 'translate(-50%, -50%)',
-                textAlign: 'center',
-                width: 'auto',
-                whiteSpace: 'nowrap'
-            }}>
-                <Title level={4} style={{ margin: 0, fontWeight: 600, letterSpacing: 0.5, lineHeight: 1.2 }}>
-                    数据中心实时监控平台
-                </Title>
-                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                    Data Center Real-time Monitoring Platform
-                </div>
-            </div>
+            {/* Center: Brand Title Refactored */}
+            <HeaderTitle />
 
-            {/* Right Side Buttons */}
+            {/* Right: Actions */}
             <Space size={16}>
                  <Switch 
                     checkedChildren={<SunOutlined />}

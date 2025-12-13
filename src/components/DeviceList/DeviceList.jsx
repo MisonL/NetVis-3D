@@ -148,6 +148,8 @@ const DeviceList = ({ onLocate }) => {
             title: '区域',
             dataIndex: 'location',
             key: 'location',
+            ellipsis: true,
+            width: 120,
             render: (loc) => loc || 'Data Center A',
         },
         {
@@ -259,7 +261,7 @@ const DeviceList = ({ onLocate }) => {
                     showSizeChanger: true 
                 }}
                 loading={loading}
-                scroll={{ y: 'calc(100vh - 280px)' }} // Adaptive scroll
+                scroll={{ x: 1100, y: 'calc(100vh - 280px)' }} // Responsive scroll
                 className="pro-table" // We will style this to be clean
                 style={{ flex: 1 }}
             />

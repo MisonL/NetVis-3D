@@ -97,14 +97,6 @@ const Dashboard = () => {
                             value={onlineRate} 
                             suffix="%" 
                             prefix={<CheckCircleOutlined style={{ color: 'var(--status-success)' }} />} 
-                            styles={{ content: { color: 'var(--status-success)', fontWeight: 700, textShadow: '0 0 10px var(--status-success-glow)' } }}
-                        />
-                        <Progress 
-                            percent={onlineRate} 
-                            strokeColor={{ from: '#52c41a', to: '#a0d911' }} 
-                            railColor="rgba(255,255,255,0.1)"
-                            size="small" 
-                            style={{ position: 'absolute', bottom: 0, left: 0, margin: 0, padding: 0, width: '100%', opacity: 0.5 }}
                         />
                     </GlassCard>
                 </Col>
@@ -129,9 +121,7 @@ const Dashboard = () => {
                             title={<span style={{ color: 'var(--text-tertiary)' }}>实时总吞吐</span>}
                             value={trafficDisplay} 
                             prefix={<ThunderboltOutlined style={{ color: 'var(--accent-cyan)' }} />} 
-                            styles={{ content: { color: 'var(--accent-cyan)', fontWeight: 700, textShadow: '0 0 10px var(--accent-cyan-glow)' } }}
                         />
-                         <div style={{ height: 4, width: '100%', background: 'linear-gradient(90deg, transparent, var(--accent-cyan), transparent)', position: 'absolute', bottom: 0, left: 0, opacity: 0.3 }}></div>
                     </GlassCard>
                 </Col>
             </Row>
