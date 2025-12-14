@@ -36,6 +36,7 @@ import { wechatRoutes as wxworkRoutes } from './routes/wxwork';
 import { complianceRoutes } from './routes/compliance';
 import { workflowRoutes } from './routes/workflow';
 import { exportRoutes } from './routes/export';
+import { bigscreenRoutes } from './routes/bigscreen';
 
 const app = new Hono();
 
@@ -81,6 +82,7 @@ app.route('/api/wxwork', wxworkRoutes);
 app.route('/api/compliance', complianceRoutes);
 app.route('/api/workflow', workflowRoutes);
 app.route('/api/export', exportRoutes);
+app.route('/api/bigscreen', bigscreenRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径
