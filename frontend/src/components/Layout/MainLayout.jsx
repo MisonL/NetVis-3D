@@ -33,7 +33,8 @@ import {
   LineChartOutlined,
   WechatOutlined,
   SafetyCertificateOutlined,
-  ApartmentOutlined
+  ApartmentOutlined,
+  CloudDownloadOutlined
 } from '@ant-design/icons';
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import TopologyCanvas3D from '../Topology/TopologyCanvas3D';
@@ -74,6 +75,7 @@ import PerformanceBaseline from '../Baseline/PerformanceBaseline';
 import WXWorkIntegration from '../WXWork/WXWorkIntegration';
 import ComplianceCenter from '../Compliance/ComplianceCenter';
 import WorkflowEditor from '../Workflow/WorkflowEditor';
+import DataExport from '../Export/DataExport';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -166,6 +168,7 @@ const MainLayout = () => {
       case '32': return <WXWorkIntegration />;
       case '33': return <ComplianceCenter />;
       case '34': return <WorkflowEditor />;
+      case '35': return <DataExport />;
       default: return <Dashboard />;
     }
   };
@@ -304,6 +307,7 @@ const MainLayout = () => {
             hasPermission('admin') && { key: '32', icon: <WechatOutlined />, label: '企业微信' },
             hasPermission('admin') && { key: '33', icon: <SafetyCertificateOutlined />, label: '合规审计' },
             hasPermission('admin') && { key: '34', icon: <ApartmentOutlined />, label: '脚本编排' },
+            hasPermission('admin') && { key: '35', icon: <CloudDownloadOutlined />, label: '数据导出' },
             { key: '3', icon: <SettingOutlined />, label: '系统设置' },
           ].filter(Boolean)} 
         />
