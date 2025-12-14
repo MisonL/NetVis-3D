@@ -121,6 +121,7 @@ server/routes/
 ├── templates.ts         # 通知模板管理 [NEW]
 ├── device-health.ts     # 设备健康评分 [NEW]
 ├── topology-manage.ts   # 拓扑连接管理 [NEW]
+├── api-stats.ts         # API使用统计 [NEW]
 └── ...
 
 collector/               # Go数据采集器 [NEW]

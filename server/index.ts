@@ -27,6 +27,7 @@ import { groupRoutes } from './routes/groups';
 import { templateRoutes } from './routes/templates';
 import { deviceHealthRoutes } from './routes/device-health';
 import { topologyRoutes } from './routes/topology-manage';
+import { apiStatsRoutes } from './routes/api-stats';
 
 const app = new Hono();
 
@@ -63,6 +64,7 @@ app.route('/api/groups', groupRoutes);
 app.route('/api/templates', templateRoutes);
 app.route('/api/device-health', deviceHealthRoutes);
 app.route('/api/topology-manage', topologyRoutes);
+app.route('/api/api-stats', apiStatsRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径
