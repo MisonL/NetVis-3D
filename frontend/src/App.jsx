@@ -5,6 +5,7 @@ import LoginPage from './components/Auth/LoginPage';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LicenseProvider } from './context/LicenseContext';
+import { I18nProvider } from './context/I18nContext';
 
 const AppContent = () => {
     const { settings } = useSettings();
@@ -68,9 +69,11 @@ const AppContent = () => {
 function App() {
   return (
     <SettingsProvider>
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
+        <I18nProvider>
+            <AuthProvider>
+                <AppContent />
+            </AuthProvider>
+        </I18nProvider>
     </SettingsProvider>
   );
 }
