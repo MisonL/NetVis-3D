@@ -1,11 +1,81 @@
+version: '3.8'
+
 services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:16-alpine
+    container_name: netvis-postgres
+    environment:
+      POSTGRES_USER: netvis
+      POSTGRES_PASSWORD: netvis123
+      POSTGRES_DB: netvis
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netvis -d netvis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - netvis-network
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: netvis-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - netvis-network
+
+  # 后端 API 服务
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: netvis-api
+    environment:
+      DATABASE_URL: postgres://netvis:netvis123@postgres:5432/netvis
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: netvis-pro-jwt-secret-change-in-production
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - netvis-network
+
+  # 前端服务
   frontend:
-    build: .
-    image: netvis-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: netvis-frontend
     ports:
-      - "21080:80"
-    restart: always
-    environment:
-      - VITE_API_BASE_URL=/api
-      - VITE_USE_MOCK=true
+      - "8080:80"
+    depends_on:
+      - api
+    networks:
+      - netvis-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  netvis-network:
+    driver: bridge

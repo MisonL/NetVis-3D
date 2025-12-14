@@ -1,11 +1,30 @@
 import React from 'react';
-import { ConfigProvider, theme } from 'antd';
+import { ConfigProvider, theme, Spin } from 'antd';
 import MainLayout from './components/Layout/MainLayout';
+import LoginPage from './components/Auth/LoginPage';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LicenseProvider } from './context/LicenseContext';
 
 const AppContent = () => {
     const { settings } = useSettings();
+    const { isAuthenticated, loading } = useAuth();
     const isDark = settings.theme === 'dark';
+
+    // 加载中状态
+    if (loading) {
+        return (
+            <div style={{
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: isDark ? '#0a1628' : '#f0f2f5',
+            }}>
+                <Spin size="large" tip="加载中..." />
+            </div>
+        );
+    }
 
     return (
         <ConfigProvider
@@ -28,11 +47,20 @@ const AppContent = () => {
                         itemBg: 'transparent',
                         itemSelectedBg: 'rgba(22, 119, 255, 0.15)',
                         itemSelectedColor: '#1677ff',
-                    }
+                    },
+                    Input: {
+                        colorBgContainer: isDark ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
+                    },
                 }
             }}
         >
-            <MainLayout />
+            {isAuthenticated ? (
+                <LicenseProvider>
+                    <MainLayout />
+                </LicenseProvider>
+            ) : (
+                <LoginPage />
+            )}
         </ConfigProvider>
     );
 };
@@ -40,9 +68,12 @@ const AppContent = () => {
 function App() {
   return (
     <SettingsProvider>
-        <AppContent />
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
     </SettingsProvider>
   );
 }
 
 export default App;
+

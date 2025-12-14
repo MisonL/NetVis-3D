@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table, Tag, Input, Space, Card, Typography, Button, Alert, Select, Upload, Modal, message } from 'antd';
+import { Table, Tag, Input, Space, Card, Typography, Button, Alert, Select, Upload, Modal, message, Popconfirm } from 'antd';
 import { 
     SearchOutlined, 
     ReloadOutlined, 
@@ -9,13 +9,16 @@ import {
     PlusOutlined, 
     ExportOutlined,
     ImportOutlined,
-    InboxOutlined
+    InboxOutlined,
+    EyeOutlined
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 
 const { Dragger } = Upload;
 import { useSimulation } from '../../services/SimulationService';
 import { useSettings } from '../../context/SettingsContext';
+import DeviceDrawer from './DeviceDrawer';
+import DeviceFormModal from './DeviceFormModal';
 
 const DeviceList = ({ onLocate }) => {
     const [searchText, setSearchText] = useState('');
@@ -23,6 +26,12 @@ const DeviceList = ({ onLocate }) => {
     const { devices, updateDevices } = useSimulation(true, settings.refreshRate); 
     const [loading, setLoading] = useState(false);
     const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+    
+    // 新增状态
+    const [drawerVisible, setDrawerVisible] = useState(false);
+    const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+    const [formVisible, setFormVisible] = useState(false);
+    const [editingDevice, setEditingDevice] = useState(null);
 
     // Filter logic
     const filteredData = devices.filter(device => 
@@ -193,14 +202,43 @@ const DeviceList = ({ onLocate }) => {
                      <Button 
                         type="link" 
                         size="small" 
+                        icon={<EyeOutlined />} 
+                        onClick={() => {
+                            setSelectedDeviceId(record.id);
+                            setDrawerVisible(true);
+                        }}
+                    >
+                        详情
+                    </Button>
+                     <Button 
+                        type="link" 
+                        size="small" 
                         icon={<SearchOutlined />} 
                         onClick={() => onLocate && onLocate(record.id)}
                     >
                         定位
                     </Button>
-                    <Button type="text" size="small" icon={<EditOutlined style={{ color: 'var(--text-secondary)' }} />} />
-                    <Button type="text" size="small" icon={<PoweroffOutlined style={{ color: '#faad14' }} />} />
-                    <Button type="text" size="small" icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />} />
+                    <Button 
+                        type="text" 
+                        size="small" 
+                        icon={<EditOutlined style={{ color: 'var(--text-secondary)' }} />} 
+                        onClick={() => {
+                            setEditingDevice(record);
+                            setFormVisible(true);
+                        }}
+                    />
+                    <Popconfirm
+                        title="确认删除此设备?"
+                        onConfirm={() => {
+                            const newDevices = devices.filter(d => d.id !== record.id);
+                            updateDevices(newDevices);
+                            message.success('设备已删除');
+                        }}
+                        okText="确认"
+                        cancelText="取消"
+                    >
+                        <Button type="text" size="small" icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />} />
+                    </Popconfirm>
                 </Space>
             ),
         },
@@ -243,7 +281,16 @@ const DeviceList = ({ onLocate }) => {
                 </Space>
 
                 <Space>
-                    <Button type="primary" icon={<PlusOutlined />}>新增设备</Button>
+                    <Button 
+                        type="primary" 
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                            setEditingDevice(null);
+                            setFormVisible(true);
+                        }}
+                    >
+                        新增设备
+                    </Button>
                     <Button icon={<ExportOutlined />}>导出</Button>
                     <Button icon={<ImportOutlined />} onClick={() => setIsImportModalVisible(true)}>导入</Button>
                     <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>刷新</Button>
@@ -301,6 +348,40 @@ const DeviceList = ({ onLocate }) => {
                     </Dragger>
                 </div>
             </Modal>
+            
+            {/* 设备详情抽屉 */}
+            <DeviceDrawer
+                visible={drawerVisible}
+                deviceId={selectedDeviceId}
+                onClose={() => {
+                    setDrawerVisible(false);
+                    setSelectedDeviceId(null);
+                }}
+                onEdit={(device) => {
+                    setDrawerVisible(false);
+                    setEditingDevice(device);
+                    setFormVisible(true);
+                }}
+                onDelete={(device) => {
+                    const newDevices = devices.filter(d => d.id !== device.id);
+                    updateDevices(newDevices);
+                    setDrawerVisible(false);
+                    message.success('设备已删除');
+                }}
+            />
+            
+            {/* 设备表单弹窗 */}
+            <DeviceFormModal
+                visible={formVisible}
+                device={editingDevice}
+                onClose={() => {
+                    setFormVisible(false);
+                    setEditingDevice(null);
+                }}
+                onSuccess={() => {
+                    handleRefresh();
+                }}
+            />
         </div>
     );
 };

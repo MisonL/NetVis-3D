@@ -1,0 +1,299 @@
+/* 移动端响应式样式 */
+
+/* 通用移动端样式 */
+@media screen and (max-width: 768px) {
+  /* 侧边栏在移动端隐藏 */
+  .ant-layout-sider {
+    position: fixed !important;
+    z-index: 1000;
+    height: 100vh;
+    left: -280px;
+    transition: left 0.3s ease;
+  }
+  
+  .ant-layout-sider.mobile-visible {
+    left: 0;
+  }
+  
+  /* 移动端遮罩层 */
+  .mobile-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+  
+  .mobile-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  /* 头部调整 */
+  .ant-layout-header {
+    padding: 0 12px !important;
+    height: 56px !important;
+    line-height: 56px !important;
+  }
+  
+  .ant-layout-header .ant-space {
+    gap: 8px !important;
+  }
+  
+  .ant-layout-header .ant-btn {
+    padding: 4px 8px !important;
+    height: 32px !important;
+  }
+  
+  /* 隐藏桌面端元素 */
+  .desktop-only {
+    display: none !important;
+  }
+  
+  /* 显示移动端菜单按钮 */
+  .mobile-menu-btn {
+    display: flex !important;
+  }
+  
+  /* 内容区域 */
+  .ant-layout-content {
+    padding: 12px !important;
+    margin-left: 0 !important;
+  }
+  
+  /* 卡片组件 */
+  .ant-card {
+    margin-bottom: 12px;
+  }
+  
+  .ant-card-head {
+    padding: 12px 16px;
+    min-height: 40px;
+  }
+  
+  .ant-card-body {
+    padding: 12px 16px;
+  }
+  
+  /* 表格响应式 */
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+  
+  .ant-table {
+    min-width: 600px;
+  }
+  
+  /* 表单布局调整 */
+  .ant-form-horizontal .ant-form-item-label {
+    padding: 0 0 4px !important;
+    line-height: 1.5 !important;
+    text-align: left !important;
+    white-space: normal !important;
+  }
+  
+  .ant-form-horizontal .ant-form-item-label > label {
+    height: auto !important;
+  }
+  
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
+  
+  /* 栅格布局 - 移动端全宽 */
+  .ant-col-xs-24 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  
+  /* 按钮组调整 */
+  .ant-btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  /* 模态框 */
+  .ant-modal {
+    max-width: calc(100vw - 32px) !important;
+    margin: 16px auto !important;
+  }
+  
+  .ant-modal-body {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+  }
+  
+  /* 抽屉组件 */
+  .ant-drawer-content-wrapper {
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+  
+  /* 标签页 */
+  .ant-tabs-nav {
+    margin-bottom: 12px !important;
+  }
+  
+  .ant-tabs-tab {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+  }
+  
+  /* 统计卡片 */
+  .ant-statistic-title {
+    font-size: 12px !important;
+  }
+  
+  .ant-statistic-content {
+    font-size: 24px !important;
+  }
+  
+  /* 面包屑 */
+  .ant-breadcrumb {
+    font-size: 12px;
+  }
+  
+  /* 分页器 */
+  .ant-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+  }
+  
+  .ant-pagination-item,
+  .ant-pagination-prev,
+  .ant-pagination-next {
+    min-width: 28px;
+    height: 28px;
+    line-height: 26px;
+  }
+  
+  /* 搜索框 */
+  .ant-input-search {
+    width: 100% !important;
+  }
+  
+  /* 下拉选择框 */
+  .ant-select {
+    width: 100% !important;
+  }
+}
+
+/* 小屏幕手机 */
+@media screen and (max-width: 375px) {
+  .ant-layout-header {
+    padding: 0 8px !important;
+  }
+  
+  .ant-card-head-title {
+    font-size: 14px;
+  }
+  
+  .ant-statistic-content {
+    font-size: 20px !important;
+  }
+  
+  .ant-btn {
+    font-size: 13px;
+  }
+}
+
+/* 横屏模式优化 */
+@media screen and (max-width: 768px) and (orientation: landscape) {
+  .ant-layout-header {
+    height: 48px !important;
+    line-height: 48px !important;
+  }
+  
+  .ant-modal-body {
+    max-height: calc(100vh - 120px);
+  }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .ant-btn,
+  .ant-menu-item,
+  .ant-table-row {
+    min-height: 44px;
+  }
+  
+  .ant-menu-item {
+    padding: 12px 16px !important;
+  }
+  
+  .ant-table-cell {
+    padding: 12px 8px !important;
+  }
+  
+  /* 增大可点击区域 */
+  .ant-switch {
+    min-width: 50px;
+    min-height: 28px;
+  }
+  
+  .ant-checkbox-wrapper,
+  .ant-radio-wrapper {
+    padding: 8px 0;
+  }
+}
+
+/* 暗色主题移动端适配 */
+@media screen and (max-width: 768px) {
+  .dark-mode .ant-layout-sider {
+    background: #141414;
+  }
+  
+  .dark-mode .mobile-overlay {
+    background: rgba(0, 0, 0, 0.7);
+  }
+}
+
+/* 移动端设备监控大屏优化 */
+@media screen and (max-width: 768px) {
+  .monitor-fullscreen {
+    padding: 12px !important;
+  }
+  
+  .monitor-fullscreen .ant-statistic-content-value {
+    font-size: 28px !important;
+  }
+  
+  .monitor-fullscreen .ant-card {
+    margin-bottom: 12px;
+  }
+}
+
+/* PWA安全区域适配（刘海屏） */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .ant-layout-header {
+    padding-top: env(safe-area-inset-top);
+    height: calc(56px + env(safe-area-inset-top)) !important;
+  }
+  
+  .ant-layout-content {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* 打印样式优化 */
+@media print {
+  .ant-layout-sider,
+  .ant-layout-header,
+  .mobile-menu-btn,
+  .ant-btn {
+    display: none !important;
+  }
+  
+  .ant-layout-content {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
