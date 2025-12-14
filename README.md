@@ -118,6 +118,7 @@ server/routes/
 ├── report.ts            # 报表 + Excel导出
 ├── schedule.ts          # 定时任务 [NEW]
 ├── snmp.ts              # SNMP模板 [NEW]
+├── templates.ts         # 通知模板管理 [NEW]
 └── ...
 
 collector/               # Go数据采集器 [NEW]

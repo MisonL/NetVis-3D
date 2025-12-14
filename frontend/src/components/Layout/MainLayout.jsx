@@ -23,7 +23,8 @@ import {
   ApiOutlined,
   CloudUploadOutlined,
   FileTextOutlined,
-  ClusterOutlined
+  ClusterOutlined,
+  MailOutlined
 } from '@ant-design/icons';
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import TopologyCanvas3D from '../Topology/TopologyCanvas3D';
@@ -53,6 +54,7 @@ import SnmpTemplateManagement from '../Snmp/SnmpTemplateManagement';
 import BackupManagement from '../Backup/BackupManagement';
 import SystemLogs from '../LogViewer/SystemLogs';
 import DeviceGroupManagement from '../Groups/DeviceGroupManagement';
+import NotificationTemplates from '../Templates/NotificationTemplates';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -134,6 +136,7 @@ const MainLayout = () => {
       case '21': return <BackupManagement />;
       case '22': return <SystemLogs />;
       case '23': return <DeviceGroupManagement />;
+      case '24': return <NotificationTemplates />;
       default: return <Dashboard />;
     }
   };
@@ -261,6 +264,7 @@ const MainLayout = () => {
             hasPermission('admin') && { key: '21', icon: <CloudUploadOutlined />, label: '备份恢复' },
             hasPermission('admin') && { key: '22', icon: <FileTextOutlined />, label: '系统日志' },
             hasPermission('admin') && { key: '23', icon: <ClusterOutlined />, label: '设备分组' },
+            hasPermission('admin') && { key: '24', icon: <MailOutlined />, label: '通知模板' },
             { key: '3', icon: <SettingOutlined />, label: '系统设置' },
           ].filter(Boolean)} 
         />
