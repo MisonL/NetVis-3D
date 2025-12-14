@@ -262,4 +262,140 @@ deviceRoutes.delete('/batch', authMiddleware, requireRole('admin'), zValidator('
   }
 });
 
+// 批量更新状态
+const batchUpdateStatusSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1, '请选择至少一个设备'),
+  status: z.enum(['online', 'offline', 'warning', 'error', 'unknown']),
+});
+
+deviceRoutes.post('/batch/status', authMiddleware, requireRole('admin'), zValidator('json', batchUpdateStatusSchema), async (c) => {
+  const { ids, status } = c.req.valid('json');
+  const currentUser = c.get('user');
+
+  try {
+    for (const id of ids) {
+      await db.update(schema.devices)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(schema.devices.id, id));
+    }
+
+    await db.insert(schema.auditLogs).values({
+      userId: currentUser.userId,
+      action: 'update',
+      resource: 'devices',
+      details: JSON.stringify({ action: 'batch_status', status, count: ids.length }),
+    });
+
+    return c.json({ code: 0, message: `成功更新 ${ids.length} 个设备状态` });
+  } catch (error) {
+    console.error('Batch update status error:', error);
+    return c.json({ code: 500, message: '批量更新状态失败' }, 500);
+  }
+});
+
+// 批量分配分组
+const batchAssignGroupSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1, '请选择至少一个设备'),
+  groupId: z.string().uuid().nullable(),
+});
+
+deviceRoutes.post('/batch/group', authMiddleware, requireRole('admin'), zValidator('json', batchAssignGroupSchema), async (c) => {
+  const { ids, groupId } = c.req.valid('json');
+  const currentUser = c.get('user');
+
+  try {
+    for (const id of ids) {
+      await db.update(schema.devices)
+        .set({ groupId, updatedAt: new Date() })
+        .where(eq(schema.devices.id, id));
+    }
+
+    await db.insert(schema.auditLogs).values({
+      userId: currentUser.userId,
+      action: 'update',
+      resource: 'devices',
+      details: JSON.stringify({ action: 'batch_group', groupId, count: ids.length }),
+    });
+
+    return c.json({ code: 0, message: `成功分配 ${ids.length} 个设备到指定分组` });
+  } catch (error) {
+    console.error('Batch assign group error:', error);
+    return c.json({ code: 500, message: '批量分配分组失败' }, 500);
+  }
+});
+
+// 批量导出设备信息
+deviceRoutes.post('/batch/export', authMiddleware, zValidator('json', z.object({
+  ids: z.array(z.string().uuid()).optional(),
+  format: z.enum(['json', 'csv']).default('json'),
+})), async (c) => {
+  const { ids, format } = c.req.valid('json');
+
+  try {
+    let devices;
+    if (ids && ids.length > 0) {
+      // 导出指定设备
+      const results = [];
+      for (const id of ids) {
+        const [device] = await db.select().from(schema.devices).where(eq(schema.devices.id, id));
+        if (device) results.push(device);
+      }
+      devices = results;
+    } else {
+      // 导出全部
+      devices = await db.select().from(schema.devices);
+    }
+
+    if (format === 'csv') {
+      const headers = ['名称', '类型', '厂商', '型号', 'IP地址', 'MAC地址', '状态', '位置'];
+      const rows = devices.map(d => 
+        [d.name, d.type, d.vendor || '', d.model || '', d.ipAddress || '', d.macAddress || '', d.status, d.location || ''].join(',')
+      );
+      const csv = [headers.join(','), ...rows].join('\n');
+      
+      return new Response(csv, {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="devices_${new Date().toISOString().split('T')[0]}.csv"`,
+        },
+      });
+    }
+
+    return c.json({
+      code: 0,
+      data: devices,
+    });
+  } catch (error) {
+    console.error('Batch export error:', error);
+    return c.json({ code: 500, message: '批量导出失败' }, 500);
+  }
+});
+
+// 设备统计接口
+deviceRoutes.get('/stats', authMiddleware, async (c) => {
+  try {
+    const devices = await db.select().from(schema.devices);
+    
+    const stats = {
+      total: devices.length,
+      online: devices.filter(d => d.status === 'online').length,
+      offline: devices.filter(d => d.status === 'offline').length,
+      warning: devices.filter(d => d.status === 'warning').length,
+      error: devices.filter(d => d.status === 'error').length,
+      byType: {} as Record<string, number>,
+      byVendor: {} as Record<string, number>,
+    };
+
+    devices.forEach(d => {
+      stats.byType[d.type] = (stats.byType[d.type] || 0) + 1;
+      if (d.vendor) stats.byVendor[d.vendor] = (stats.byVendor[d.vendor] || 0) + 1;
+    });
+
+    return c.json({ code: 0, data: stats });
+  } catch (error) {
+    console.error('Get device stats error:', error);
+    return c.json({ code: 500, message: '获取设备统计失败' }, 500);
+  }
+});
+
 export { deviceRoutes };

@@ -5,11 +5,12 @@ import {
     ReloadOutlined, 
     EditOutlined, 
     DeleteOutlined, 
-    PoweroffOutlined, 
     PlusOutlined, 
+    UploadOutlined, 
+    DownloadOutlined,
+    AimOutlined,
+    SettingOutlined,
     ExportOutlined,
-    ImportOutlined,
-    InboxOutlined,
     EyeOutlined
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
@@ -32,6 +33,9 @@ const DeviceList = ({ onLocate }) => {
     const [selectedDeviceId, setSelectedDeviceId] = useState(null);
     const [formVisible, setFormVisible] = useState(false);
     const [editingDevice, setEditingDevice] = useState(null);
+    
+    // 批量操作状态
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
     // Filter logic
     const filteredData = devices.filter(device => 
@@ -297,11 +301,37 @@ const DeviceList = ({ onLocate }) => {
                 </Space>
             </div>
 
+            {/* 批量操作工具栏 */}
+            {selectedRowKeys.length > 0 && (
+                <Alert
+                    message={
+                        <Space>
+                            <span>已选择 {selectedRowKeys.length} 台设备</span>
+                            <Button size="small" type="primary" danger onClick={() => message.info('批量删除功能')}>
+                                批量删除
+                            </Button>
+                            <Button size="small" onClick={() => message.info('批量导出功能')}>
+                                批量导出
+                            </Button>
+                            <Button size="small" onClick={() => setSelectedRowKeys([])}>
+                                取消选择
+                            </Button>
+                        </Space>
+                    }
+                    type="info"
+                    style={{ marginBottom: 16 }}
+                />
+            )}
+
             {/* Table */}
             <Table 
                 columns={columns} 
                 dataSource={filteredData} 
                 rowKey="id"
+                rowSelection={{
+                    selectedRowKeys,
+                    onChange: setSelectedRowKeys,
+                }}
                 pagination={{ 
                     pageSize: 10, 
                     showTotal: (total) => `共 ${total} 台设备`,
