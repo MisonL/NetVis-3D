@@ -233,6 +233,45 @@ export const webhooks = pgTable('webhooks', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
+// 采集器表
+export const collectors = pgTable('collectors', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  version: text('version'),
+  status: text('status').notNull().default('offline'), // online, offline
+  lastHeartbeat: timestamp('last_heartbeat'),
+  startedAt: timestamp('started_at'),
+  config: text('config'), // JSON
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// 设备指标时序表 (TimescaleDB hypertable)
+export const deviceMetrics = pgTable('device_metrics', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  deviceId: uuid('device_id').references(() => devices.id),
+  collectorId: text('collector_id').references(() => collectors.id),
+  status: text('status').notNull(), // online, offline
+  latency: integer('latency'), // ms
+  packetLoss: integer('packet_loss'), // %
+  cpuUsage: integer('cpu_usage'), // %
+  memoryUsage: integer('memory_usage'), // %
+  uptime: integer('uptime'), // seconds
+  timestamp: timestamp('timestamp').notNull().defaultNow(),
+});
+
+// 接口流量时序表
+export const interfaceMetrics = pgTable('interface_metrics', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  deviceId: uuid('device_id').references(() => devices.id),
+  interfaceName: text('interface_name').notNull(),
+  inBytes: integer('in_bytes'),
+  outBytes: integer('out_bytes'),
+  inErrors: integer('in_errors'),
+  outErrors: integer('out_errors'),
+  status: text('status'),
+  timestamp: timestamp('timestamp').notNull().defaultNow(),
+});
+
 // 类型导出
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -249,3 +288,6 @@ export type ReportSchedule = typeof reportSchedules.$inferSelect;
 export type NotificationChannel = typeof notificationChannels.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type Webhook = typeof webhooks.$inferSelect;
+export type Collector = typeof collectors.$inferSelect;
+export type DeviceMetric = typeof deviceMetrics.$inferSelect;
+export type InterfaceMetric = typeof interfaceMetrics.$inferSelect;

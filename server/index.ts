@@ -18,6 +18,8 @@ import { healthRoutes } from './routes/health';
 import { docsRoutes } from './routes/docs';
 import { discoveryRoutes } from './routes/discovery';
 import { scheduleRoutes } from './routes/schedule';
+import { collectorRoutes } from './routes/collector';
+import { metricsRoutes } from './routes/metrics';
 
 const app = new Hono();
 
@@ -45,6 +47,8 @@ app.route('/api/system', systemRoutes);
 app.route('/api/docs', docsRoutes);
 app.route('/api/discovery', discoveryRoutes);
 app.route('/api/schedule', scheduleRoutes);
+app.route('/api/collector', collectorRoutes);
+app.route('/api/metrics', metricsRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径

@@ -1,0 +1,42 @@
+# NetVis 数据采集器配置文件
+
+# API服务器配置
+api:
+  endpoint: "http://localhost:3001/api"
+  token: ""  # 从服务器获取的API Token
+  timeout: 30s
+  retryCount: 3
+
+# 采集器基本配置
+collector:
+  id: "collector-001"
+  name: "主采集器"
+  interval: 60s  # 采集间隔
+  concurrency: 10  # 并发采集数
+
+# SNMP配置
+snmp:
+  community: "public"
+  version: "2c"
+  timeout: 5s
+  retries: 2
+  port: 161
+
+# Ping配置
+ping:
+  count: 3
+  timeout: 5s
+  interval: 1s
+
+# 日志配置
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  file: "/var/log/netvis-collector.log"
+
+# 指标配置
+metrics:
+  enabled: true
+  port: 9100
+  path: "/metrics"
