@@ -16,6 +16,7 @@ import { notificationRoutes } from './routes/notification';
 import { systemRoutes } from './routes/system';
 import { healthRoutes } from './routes/health';
 import { docsRoutes } from './routes/docs';
+import { discoveryRoutes } from './routes/discovery';
 
 const app = new Hono();
 
@@ -41,6 +42,7 @@ app.route('/api/report', reportRoutes);
 app.route('/api/notifications', notificationRoutes);
 app.route('/api/system', systemRoutes);
 app.route('/api/docs', docsRoutes);
+app.route('/api/discovery', discoveryRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径

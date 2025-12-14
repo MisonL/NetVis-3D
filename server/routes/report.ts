@@ -3,6 +3,7 @@ import { db, schema } from '../db';
 import { eq, desc, and, gte, lte, count, sql } from 'drizzle-orm';
 import { authMiddleware, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../middleware/auth';
+import * as XLSX from 'xlsx';
 
 const reportRoutes = new Hono<{
   Variables: {
@@ -118,6 +119,50 @@ reportRoutes.post('/generate/device-inventory', authMiddleware, async (c) => {
       });
     }
 
+    if (format === 'xlsx') {
+      // 生成Excel
+      const workbook = XLSX.utils.book_new();
+      
+      // 设备清单Sheet
+      const deviceData = reportData.devices.map(d => ({
+        '设备名称': d.name,
+        '类型': d.type,
+        '厂商': d.vendor || '',
+        'IP地址': d.ip || '',
+        '状态': d.status,
+        '位置': d.location || '',
+        '创建时间': d.createdAt,
+      }));
+      const deviceSheet = XLSX.utils.json_to_sheet(deviceData);
+      XLSX.utils.book_append_sheet(workbook, deviceSheet, '设备清单');
+      
+      // 统计汇总Sheet
+      const summaryData = [
+        { '统计项': '设备总数', '数量': reportData.summary.totalDevices },
+        { '统计项': '', '数量': '' },
+        { '统计项': '== 按类型统计 ==', '数量': '' },
+        ...reportData.summary.byType.map(t => ({ '统计项': t.type, '数量': t.count })),
+        { '统计项': '', '数量': '' },
+        { '统计项': '== 按状态统计 ==', '数量': '' },
+        ...reportData.summary.byStatus.map(s => ({ '统计项': s.status, '数量': s.count })),
+        { '统计项': '', '数量': '' },
+        { '统计项': '== 按厂商统计 ==', '数量': '' },
+        ...reportData.summary.byVendor.map(v => ({ '统计项': v.vendor, '数量': v.count })),
+      ];
+      const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(workbook, summarySheet, '统计汇总');
+      
+      // 生成Buffer
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      return new Response(buffer, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="device_inventory_${new Date().toISOString().split('T')[0]}.xlsx"`,
+        },
+      });
+    }
+
     return c.json({
       code: 0,
       data: reportData,
@@ -177,6 +222,44 @@ reportRoutes.post('/generate/alert-summary', authMiddleware, async (c) => {
         { device: 'Switch-DC-A', alertCount: 8 },
       ],
     };
+
+    if (format === 'xlsx') {
+      const workbook = XLSX.utils.book_new();
+      
+      // 告警列表Sheet
+      const alertData = alerts.map(a => ({
+        '告警消息': a.message,
+        '严重程度': a.severity,
+        '状态': a.status,
+        '设备ID': a.deviceId || '',
+        '创建时间': a.createdAt,
+      }));
+      const alertSheet = XLSX.utils.json_to_sheet(alertData);
+      XLSX.utils.book_append_sheet(workbook, alertSheet, '告警列表');
+      
+      // 统计汇总Sheet
+      const summaryData = [
+        { '统计项': '告警总数', '数量': reportData.summary.totalAlerts },
+        { '统计项': '处理率', '数量': `${reportData.summary.resolveRate}%` },
+        { '统计项': '', '数量': '' },
+        { '统计项': '== 按严重程度 ==', '数量': '' },
+        ...reportData.summary.bySeverity.map(s => ({ '统计项': s.severity, '数量': s.count })),
+        { '统计项': '', '数量': '' },
+        { '统计项': '== 按状态 ==', '数量': '' },
+        ...reportData.summary.byStatus.map(s => ({ '统计项': s.status, '数量': s.count })),
+      ];
+      const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(workbook, summarySheet, '统计汇总');
+      
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      return new Response(buffer, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="alert_summary_${new Date().toISOString().split('T')[0]}.xlsx"`,
+        },
+      });
+    }
 
     return c.json({
       code: 0,

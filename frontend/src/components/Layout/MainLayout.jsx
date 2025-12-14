@@ -15,7 +15,8 @@ import {
   SearchOutlined,
   DesktopOutlined,
   MenuOutlined,
-  CloseOutlined
+  CloseOutlined,
+  RadarChartOutlined
 } from '@ant-design/icons';
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import TopologyCanvas3D from '../Topology/TopologyCanvas3D';
@@ -37,6 +38,7 @@ import ReportCenter from '../Report/ReportCenter';
 import NotificationCenter from '../Notification/NotificationCenter';
 import SystemMonitor from '../System/SystemMonitor';
 import FullScreenMonitor from '../Monitor/FullScreenMonitor';
+import NetworkDiscovery from '../Discovery/NetworkDiscovery';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -110,6 +112,7 @@ const MainLayout = () => {
       case '13': return <NotificationCenter />;
       case '14': return <SystemMonitor />;
       case '15': return <FullScreenMonitor />;
+      case '16': return <NetworkDiscovery />;
       default: return <Dashboard />;
     }
   };
@@ -229,6 +232,7 @@ const MainLayout = () => {
             { key: '13', icon: <BellOutlined />, label: '通知中心' },
             hasPermission('admin') && { key: '14', icon: <DashboardOutlined />, label: '系统监控' },
             { key: '15', icon: <DesktopOutlined />, label: '监控大屏' },
+            hasPermission('admin') && { key: '16', icon: <RadarChartOutlined />, label: '网络发现' },
             { key: '3', icon: <SettingOutlined />, label: '系统设置' },
           ].filter(Boolean)} 
         />
