@@ -50,7 +50,7 @@ import ScheduleManagement from '../Schedule/ScheduleManagement';
 import CollectorManagement from '../Collector/CollectorManagement';
 import SnmpTemplateManagement from '../Snmp/SnmpTemplateManagement';
 import BackupManagement from '../Backup/BackupManagement';
-import SystemLogs from '../Logs/SystemLogs';
+import SystemLogs from '../LogViewer/SystemLogs';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
