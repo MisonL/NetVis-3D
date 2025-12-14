@@ -31,6 +31,7 @@ import { apiStatsRoutes } from './routes/api-stats';
 import { maintenanceRoutes } from './routes/maintenance';
 import { sshRoutes } from './routes/ssh';
 import { trafficRoutes } from './routes/traffic';
+import { baselineRoutes } from './routes/baseline';
 
 const app = new Hono();
 
@@ -71,6 +72,7 @@ app.route('/api/api-stats', apiStatsRoutes);
 app.route('/api/maintenance', maintenanceRoutes);
 app.route('/api/ssh', sshRoutes);
 app.route('/api/traffic', trafficRoutes);
+app.route('/api/baseline', baselineRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径

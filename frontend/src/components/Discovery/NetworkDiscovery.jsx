@@ -61,8 +61,10 @@ const NetworkDiscovery = () => {
   }, []);
 
   useEffect(() => {
-    fetchTasksHistory();
+    // 使用setTimeout延迟调用以避免同步setState警告
+    const timer = setTimeout(() => fetchTasksHistory(), 0);
     return () => {
+      clearTimeout(timer);
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, [fetchTasksHistory]);

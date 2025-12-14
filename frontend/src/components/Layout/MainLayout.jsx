@@ -67,6 +67,7 @@ import ApiUsageStats from '../ApiStats/ApiUsageStats';
 import MaintenanceManagement from '../Maintenance/MaintenanceManagement';
 import SshManagement from '../Ssh/SshManagement';
 import TrafficAnalysis from '../Traffic/TrafficAnalysis';
+import PerformanceBaseline from '../Baseline/PerformanceBaseline';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -155,6 +156,7 @@ const MainLayout = () => {
       case '28': return <MaintenanceManagement />;
       case '29': return <SshManagement />;
       case '30': return <TrafficAnalysis />;
+      case '31': return <PerformanceBaseline />;
       default: return <Dashboard />;
     }
   };
@@ -289,6 +291,7 @@ const MainLayout = () => {
             hasPermission('admin') && { key: '28', icon: <ToolOutlined />, label: '维护计划' },
             hasPermission('admin') && { key: '29', icon: <CodeOutlined />, label: 'SSH管理' },
             hasPermission('admin') && { key: '30', icon: <LineChartOutlined />, label: '流量分析' },
+            hasPermission('admin') && { key: '31', icon: <DashboardOutlined />, label: '性能基线' },
             { key: '3', icon: <SettingOutlined />, label: '系统设置' },
           ].filter(Boolean)} 
         />
