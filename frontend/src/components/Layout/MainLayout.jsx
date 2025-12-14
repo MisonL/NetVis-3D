@@ -31,7 +31,8 @@ import {
   ToolOutlined,
   CodeOutlined,
   LineChartOutlined,
-  WechatOutlined
+  WechatOutlined,
+  SafetyCertificateOutlined
 } from '@ant-design/icons';
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import TopologyCanvas3D from '../Topology/TopologyCanvas3D';
@@ -70,6 +71,7 @@ import SshManagement from '../Ssh/SshManagement';
 import TrafficAnalysis from '../Traffic/TrafficAnalysis';
 import PerformanceBaseline from '../Baseline/PerformanceBaseline';
 import WXWorkIntegration from '../WXWork/WXWorkIntegration';
+import ComplianceCenter from '../Compliance/ComplianceCenter';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -160,6 +162,7 @@ const MainLayout = () => {
       case '30': return <TrafficAnalysis />;
       case '31': return <PerformanceBaseline />;
       case '32': return <WXWorkIntegration />;
+      case '33': return <ComplianceCenter />;
       default: return <Dashboard />;
     }
   };
@@ -296,6 +299,7 @@ const MainLayout = () => {
             hasPermission('admin') && { key: '30', icon: <LineChartOutlined />, label: '流量分析' },
             hasPermission('admin') && { key: '31', icon: <DashboardOutlined />, label: '性能基线' },
             hasPermission('admin') && { key: '32', icon: <WechatOutlined />, label: '企业微信' },
+            hasPermission('admin') && { key: '33', icon: <SafetyCertificateOutlined />, label: '合规审计' },
             { key: '3', icon: <SettingOutlined />, label: '系统设置' },
           ].filter(Boolean)} 
         />
