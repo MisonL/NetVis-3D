@@ -111,6 +111,7 @@ server/routes/
 ├── config.ts            # 配置管理
 ├── devices.ts           # 设备CRUD + 批量操作
 ├── discovery.ts         # 网络发现 [NEW]
+├── groups.ts            # 设备分组管理 [NEW]
 ├── logs.ts              # 系统日志查看器 [NEW]
 ├── metrics.ts           # 时序指标 [NEW]
 ├── notification.ts      # 通知管理
