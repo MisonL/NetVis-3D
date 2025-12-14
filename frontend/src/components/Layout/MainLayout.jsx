@@ -27,7 +27,8 @@ import {
   MailOutlined,
   HeartOutlined,
   BranchesOutlined,
-  AreaChartOutlined
+  AreaChartOutlined,
+  ToolOutlined
 } from '@ant-design/icons';
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import TopologyCanvas3D from '../Topology/TopologyCanvas3D';
@@ -61,6 +62,7 @@ import NotificationTemplates from '../Templates/NotificationTemplates';
 import DeviceHealthScore from '../Health/DeviceHealthScore';
 import TopologyConnectionManagement from '../TopologyManage/TopologyConnectionManagement';
 import ApiUsageStats from '../ApiStats/ApiUsageStats';
+import MaintenanceManagement from '../Maintenance/MaintenanceManagement';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -146,6 +148,7 @@ const MainLayout = () => {
       case '25': return <DeviceHealthScore />;
       case '26': return <TopologyConnectionManagement />;
       case '27': return <ApiUsageStats />;
+      case '28': return <MaintenanceManagement />;
       default: return <Dashboard />;
     }
   };
@@ -277,6 +280,7 @@ const MainLayout = () => {
             hasPermission('admin') && { key: '25', icon: <HeartOutlined />, label: '健康评分' },
             hasPermission('admin') && { key: '26', icon: <BranchesOutlined />, label: '拓扑连接' },
             hasPermission('admin') && { key: '27', icon: <AreaChartOutlined />, label: 'API统计' },
+            hasPermission('admin') && { key: '28', icon: <ToolOutlined />, label: '维护计划' },
             { key: '3', icon: <SettingOutlined />, label: '系统设置' },
           ].filter(Boolean)} 
         />
