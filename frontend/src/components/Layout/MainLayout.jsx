@@ -35,7 +35,8 @@ import {
   SafetyCertificateOutlined,
   ApartmentOutlined,
   CloudDownloadOutlined,
-  FundProjectionScreenOutlined
+  FundProjectionScreenOutlined,
+  BookOutlined
 } from '@ant-design/icons';
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import TopologyCanvas3D from '../Topology/TopologyCanvas3D';
@@ -78,6 +79,7 @@ import ComplianceCenter from '../Compliance/ComplianceCenter';
 import WorkflowEditor from '../Workflow/WorkflowEditor';
 import DataExport from '../Export/DataExport';
 import BigScreen from '../BigScreen/BigScreen';
+import KnowledgeBase from '../Knowledge/KnowledgeBase';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -172,6 +174,7 @@ const MainLayout = () => {
       case '34': return <WorkflowEditor />;
       case '35': return <DataExport />;
       case '36': return <BigScreen />;
+      case '37': return <KnowledgeBase />;
       default: return <Dashboard />;
     }
   };
@@ -312,6 +315,7 @@ const MainLayout = () => {
             hasPermission('admin') && { key: '34', icon: <ApartmentOutlined />, label: '脚本编排' },
             hasPermission('admin') && { key: '35', icon: <CloudDownloadOutlined />, label: '数据导出' },
             hasPermission('admin') && { key: '36', icon: <FundProjectionScreenOutlined />, label: '监控大屏' },
+            { key: '37', icon: <BookOutlined />, label: '知识库' },
             { key: '3', icon: <SettingOutlined />, label: '系统设置' },
           ].filter(Boolean)} 
         />
