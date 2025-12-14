@@ -61,6 +61,7 @@ const SnmpTemplateManagement = () => {
 
   useEffect(() => {
     fetchTemplates();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (values) => {
@@ -149,7 +150,7 @@ const SnmpTemplateManagement = () => {
     {
       title: '模板名称',
       dataIndex: 'name',
-      render: (name, record) => (
+      render: (name) => (
         <Space>
           <ApiOutlined style={{ color: '#1890ff' }} />
           <Text strong>{name}</Text>

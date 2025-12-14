@@ -106,6 +106,7 @@ frontend/src/
 
 server/routes/
 ├── alerts.ts            # 告警 + 告警规则
+├── backup.ts            # 系统备份恢复 [NEW]
 ├── collector.ts         # 采集器API [NEW]
 ├── config.ts            # 配置管理
 ├── devices.ts           # 设备CRUD + 批量操作
