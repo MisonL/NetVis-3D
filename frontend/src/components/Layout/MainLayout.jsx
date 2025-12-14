@@ -21,7 +21,8 @@ import {
   ScheduleOutlined,
   CloudServerOutlined,
   ApiOutlined,
-  CloudUploadOutlined
+  CloudUploadOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import TopologyCanvas3D from '../Topology/TopologyCanvas3D';
@@ -49,6 +50,7 @@ import ScheduleManagement from '../Schedule/ScheduleManagement';
 import CollectorManagement from '../Collector/CollectorManagement';
 import SnmpTemplateManagement from '../Snmp/SnmpTemplateManagement';
 import BackupManagement from '../Backup/BackupManagement';
+import SystemLogs from '../Logs/SystemLogs';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -128,6 +130,7 @@ const MainLayout = () => {
       case '19': return <CollectorManagement />;
       case '20': return <SnmpTemplateManagement />;
       case '21': return <BackupManagement />;
+      case '22': return <SystemLogs />;
       default: return <Dashboard />;
     }
   };
@@ -253,6 +256,7 @@ const MainLayout = () => {
             hasPermission('admin') && { key: '19', icon: <CloudServerOutlined />, label: '采集器管理' },
             hasPermission('admin') && { key: '20', icon: <ApiOutlined />, label: 'SNMP模板' },
             hasPermission('admin') && { key: '21', icon: <CloudUploadOutlined />, label: '备份恢复' },
+            hasPermission('admin') && { key: '22', icon: <FileTextOutlined />, label: '系统日志' },
             { key: '3', icon: <SettingOutlined />, label: '系统设置' },
           ].filter(Boolean)} 
         />

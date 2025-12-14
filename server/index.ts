@@ -22,6 +22,7 @@ import { collectorRoutes } from './routes/collector';
 import { metricsRoutes } from './routes/metrics';
 import { snmpRoutes } from './routes/snmp';
 import { backupRoutes } from './routes/backup';
+import { logsRoutes } from './routes/logs';
 
 const app = new Hono();
 
@@ -53,6 +54,7 @@ app.route('/api/collector', collectorRoutes);
 app.route('/api/metrics', metricsRoutes);
 app.route('/api/snmp', snmpRoutes);
 app.route('/api/backup', backupRoutes);
+app.route('/api/logs', logsRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径
