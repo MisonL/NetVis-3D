@@ -18,7 +18,8 @@ import {
   CloseOutlined,
   RadarChartOutlined,
   ThunderboltOutlined,
-  ScheduleOutlined
+  ScheduleOutlined,
+  CloudServerOutlined
 } from '@ant-design/icons';
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import TopologyCanvas3D from '../Topology/TopologyCanvas3D';
@@ -43,6 +44,7 @@ import FullScreenMonitor from '../Monitor/FullScreenMonitor';
 import NetworkDiscovery from '../Discovery/NetworkDiscovery';
 import AlertRuleManagement from '../Alerts/AlertRuleManagement';
 import ScheduleManagement from '../Schedule/ScheduleManagement';
+import CollectorManagement from '../Collector/CollectorManagement';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -119,6 +121,7 @@ const MainLayout = () => {
       case '16': return <NetworkDiscovery />;
       case '17': return <AlertRuleManagement />;
       case '18': return <ScheduleManagement />;
+      case '19': return <CollectorManagement />;
       default: return <Dashboard />;
     }
   };
@@ -241,6 +244,7 @@ const MainLayout = () => {
             hasPermission('admin') && { key: '16', icon: <RadarChartOutlined />, label: '网络发现' },
             hasPermission('admin') && isModuleEnabled('ALERT') && { key: '17', icon: <ThunderboltOutlined />, label: '告警规则' },
             hasPermission('admin') && { key: '18', icon: <ScheduleOutlined />, label: '定时任务' },
+            hasPermission('admin') && { key: '19', icon: <CloudServerOutlined />, label: '采集器管理' },
             { key: '3', icon: <SettingOutlined />, label: '系统设置' },
           ].filter(Boolean)} 
         />
