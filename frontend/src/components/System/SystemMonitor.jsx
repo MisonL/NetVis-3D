@@ -16,7 +16,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const SystemMonitor = () => {
   const { token } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [health, setHealth] = useState(null);
   const [metrics, setMetrics] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -113,7 +113,7 @@ const SystemMonitor = () => {
       if (data.code === 0) {
         message.success(data.message);
       }
-    } catch (err) {
+    } catch {
       message.error('操作失败');
     }
   };
@@ -129,7 +129,7 @@ const SystemMonitor = () => {
         message.success(data.message);
         fetchBackups();
       }
-    } catch (err) {
+    } catch {
       message.error('创建备份失败');
     }
   };

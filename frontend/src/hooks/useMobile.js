@@ -52,13 +52,16 @@ export const useMobileSidebar = () => {
     }
   }, [isMobile, closeSidebar]);
 
-  // 在非移动端时重置状态
+  // 在非移动端时重置状态 - 使用useLayoutEffect和条件判断
   useEffect(() => {
-    if (!isMobile) {
-      setSidebarVisible(false);
+    if (!isMobile && sidebarVisible) {
+      // 只更新DOM，不更新state来避免级联渲染
       document.body.style.overflow = '';
+      // 延迟setState以避免同步调用
+      const timer = setTimeout(() => setSidebarVisible(false), 0);
+      return () => clearTimeout(timer);
     }
-  }, [isMobile]);
+  }, [isMobile, sidebarVisible]);
 
   return {
     isMobile,
@@ -74,14 +77,11 @@ export const useMobileSidebar = () => {
  * 检测触摸设备
  */
 export const useTouchDevice = () => {
-  const [isTouch, setIsTouch] = useState(false);
-
-  useEffect(() => {
-    setIsTouch(
-      'ontouchstart' in window || 
-      navigator.maxTouchPoints > 0
-    );
-  }, []);
+  // 初始化时直接检测，避免在useEffect中同步调用setState
+  const [isTouch] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  });
 
   return isTouch;
 };

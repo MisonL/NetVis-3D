@@ -51,7 +51,7 @@ const AlertRuleManagement = () => {
       if (data.code === 0) {
         setRules(data.data || []);
       }
-    } catch (err) {
+    } catch {
       message.error('获取规则列表失败');
     } finally {
       setLoading(false);
@@ -60,6 +60,7 @@ const AlertRuleManagement = () => {
 
   useEffect(() => {
     fetchRules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 创建/更新规则
@@ -91,7 +92,7 @@ const AlertRuleManagement = () => {
       } else {
         message.error(data.message);
       }
-    } catch (err) {
+    } catch {
       message.error('操作失败');
     }
   };
@@ -110,7 +111,7 @@ const AlertRuleManagement = () => {
       } else {
         message.error(data.message);
       }
-    } catch (err) {
+    } catch {
       message.error('删除失败');
     }
   };
@@ -131,7 +132,7 @@ const AlertRuleManagement = () => {
         message.success(isEnabled ? '规则已启用' : '规则已禁用');
         fetchRules();
       }
-    } catch (err) {
+    } catch {
       message.error('操作失败');
     }
   };

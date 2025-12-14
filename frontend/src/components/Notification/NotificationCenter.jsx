@@ -71,7 +71,7 @@ const NotificationCenter = () => {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       fetchNotifications();
-    } catch (err) {
+    } catch {
       message.error('操作失败');
     }
   };
@@ -84,7 +84,7 @@ const NotificationCenter = () => {
       });
       message.success('已全部标为已读');
       fetchNotifications();
-    } catch (err) {
+    } catch {
       message.error('操作失败');
     }
   };
@@ -97,7 +97,7 @@ const NotificationCenter = () => {
       });
       message.success('已删除');
       fetchNotifications();
-    } catch (err) {
+    } catch {
       message.error('删除失败');
     }
   };
@@ -112,7 +112,7 @@ const NotificationCenter = () => {
       if (data.code === 0) {
         message.success('测试消息已发送');
       }
-    } catch (err) {
+    } catch {
       message.error('测试失败');
     }
   };

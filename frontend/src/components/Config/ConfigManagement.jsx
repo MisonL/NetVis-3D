@@ -21,7 +21,7 @@ const ConfigManagement = () => {
   const [backups, setBackups] = useState([]);
   const [deployHistory, setDeployHistory] = useState([]);
   const [templates, setTemplates] = useState([]);
-  const [backupModalVisible, setBackupModalVisible] = useState(false);
+  const [_backupModalVisible, setBackupModalVisible] = useState(false);
   const [deployModalVisible, setDeployModalVisible] = useState(false);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState(null);
@@ -89,7 +89,7 @@ const ConfigManagement = () => {
         setSelectedConfig(data.data);
         setViewModalVisible(true);
       }
-    } catch (err) {
+    } catch {
       message.error('获取配置内容失败');
     }
   };
@@ -122,7 +122,7 @@ const ConfigManagement = () => {
       } else {
         message.error(data.message);
       }
-    } catch (err) {
+    } catch {
       message.error('配置下发失败');
     }
   };

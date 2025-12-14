@@ -56,7 +56,7 @@ const ScheduleManagement = () => {
       if (data.code === 0) {
         setJobs(data.data || []);
       }
-    } catch (err) {
+    } catch {
       message.error('获取任务列表失败');
     } finally {
       setLoading(false);
@@ -65,6 +65,7 @@ const ScheduleManagement = () => {
 
   useEffect(() => {
     fetchJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 创建/更新任务
@@ -93,7 +94,7 @@ const ScheduleManagement = () => {
       } else {
         message.error(data.message);
       }
-    } catch (err) {
+    } catch {
       message.error('操作失败');
     }
   };
@@ -110,7 +111,7 @@ const ScheduleManagement = () => {
         message.success('任务删除成功');
         fetchJobs();
       }
-    } catch (err) {
+    } catch {
       message.error('删除失败');
     }
   };
@@ -127,7 +128,7 @@ const ScheduleManagement = () => {
         message.success('任务已开始执行');
         fetchJobs();
       }
-    } catch (err) {
+    } catch {
       message.error('执行失败');
     }
   };
@@ -148,7 +149,7 @@ const ScheduleManagement = () => {
         message.success(isEnabled ? '任务已启用' : '任务已禁用');
         fetchJobs();
       }
-    } catch (err) {
+    } catch {
       message.error('操作失败');
     }
   };
@@ -164,7 +165,7 @@ const ScheduleManagement = () => {
         setHistoryData(data.data || []);
         setHistoryVisible(true);
       }
-    } catch (err) {
+    } catch {
       message.error('获取历史失败');
     }
   };

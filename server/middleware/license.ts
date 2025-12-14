@@ -1,4 +1,4 @@
-import { Context, Next } from 'hono';
+import type { Context, Next } from 'hono';
 import { db, schema } from '../db';
 import { eq, count } from 'drizzle-orm';
 

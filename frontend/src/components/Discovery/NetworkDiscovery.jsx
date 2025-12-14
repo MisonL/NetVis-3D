@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Card, 
   Form, 
@@ -46,7 +46,7 @@ const NetworkDiscovery = () => {
   const getToken = () => localStorage.getItem('token');
 
   // 获取历史任务
-  const fetchTasksHistory = async () => {
+  const fetchTasksHistory = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/discovery/tasks`, {
         headers: { Authorization: `Bearer ${getToken()}` },
@@ -58,14 +58,14 @@ const NetworkDiscovery = () => {
     } catch (err) {
       console.error('Fetch tasks error:', err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchTasksHistory();
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, []);
+  }, [fetchTasksHistory]);
 
   // 轮询任务状态
   const pollTaskStatus = (id) => {
@@ -131,7 +131,7 @@ const NetworkDiscovery = () => {
         message.error(data.message || '启动失败');
         setLoading(false);
       }
-    } catch (err) {
+    } catch {
       message.error('启动失败');
       setLoading(false);
     }
@@ -149,7 +149,7 @@ const NetworkDiscovery = () => {
       setLoading(false);
       message.info('任务已停止');
       fetchTasksHistory();
-    } catch (err) {
+    } catch {
       message.error('停止失败');
     }
   };
@@ -179,7 +179,7 @@ const NetworkDiscovery = () => {
       } else {
         message.error(data.message);
       }
-    } catch (err) {
+    } catch {
       message.error('导入失败');
     }
   };

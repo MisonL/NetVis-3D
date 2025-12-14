@@ -42,9 +42,7 @@ const SshManagement = () => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [credModalVisible, setCredModalVisible] = useState(false);
-  const [execModalVisible, setExecModalVisible] = useState(false);
   const [execResult, setExecResult] = useState(null);
-  const [selectedDevice, setSelectedDevice] = useState(null);
   const [form] = Form.useForm();
   const [execForm] = Form.useForm();
 

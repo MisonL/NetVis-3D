@@ -103,7 +103,7 @@ const LicenseManagement = () => {
       } else {
         message.error(data.message);
       }
-    } catch (err) {
+    } catch {
       message.error('激活失败，请检查网络');
     } finally {
       setImporting(false);
@@ -121,7 +121,7 @@ const LicenseManagement = () => {
         setLicenseKey(data.data.licenseKey);
         message.success(`已生成30天试用License`);
       }
-    } catch (err) {
+    } catch {
       message.error('生成失败');
     }
   };
