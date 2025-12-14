@@ -25,6 +25,7 @@ import { backupRoutes } from './routes/backup';
 import { logsRoutes } from './routes/logs';
 import { groupRoutes } from './routes/groups';
 import { templateRoutes } from './routes/templates';
+import { deviceHealthRoutes } from './routes/device-health';
 
 const app = new Hono();
 
@@ -59,6 +60,7 @@ app.route('/api/backup', backupRoutes);
 app.route('/api/logs', logsRoutes);
 app.route('/api/groups', groupRoutes);
 app.route('/api/templates', templateRoutes);
+app.route('/api/device-health', deviceHealthRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径

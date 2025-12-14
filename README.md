@@ -119,6 +119,7 @@ server/routes/
 ├── schedule.ts          # 定时任务 [NEW]
 ├── snmp.ts              # SNMP模板 [NEW]
 ├── templates.ts         # 通知模板管理 [NEW]
+├── device-health.ts     # 设备健康评分 [NEW]
 └── ...
 
 collector/               # Go数据采集器 [NEW]
