@@ -16,7 +16,9 @@ import {
   DesktopOutlined,
   MenuOutlined,
   CloseOutlined,
-  RadarChartOutlined
+  RadarChartOutlined,
+  ThunderboltOutlined,
+  ScheduleOutlined
 } from '@ant-design/icons';
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import TopologyCanvas3D from '../Topology/TopologyCanvas3D';
@@ -39,6 +41,8 @@ import NotificationCenter from '../Notification/NotificationCenter';
 import SystemMonitor from '../System/SystemMonitor';
 import FullScreenMonitor from '../Monitor/FullScreenMonitor';
 import NetworkDiscovery from '../Discovery/NetworkDiscovery';
+import AlertRuleManagement from '../Alerts/AlertRuleManagement';
+import ScheduleManagement from '../Schedule/ScheduleManagement';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -113,6 +117,8 @@ const MainLayout = () => {
       case '14': return <SystemMonitor />;
       case '15': return <FullScreenMonitor />;
       case '16': return <NetworkDiscovery />;
+      case '17': return <AlertRuleManagement />;
+      case '18': return <ScheduleManagement />;
       default: return <Dashboard />;
     }
   };
@@ -233,6 +239,8 @@ const MainLayout = () => {
             hasPermission('admin') && { key: '14', icon: <DashboardOutlined />, label: '系统监控' },
             { key: '15', icon: <DesktopOutlined />, label: '监控大屏' },
             hasPermission('admin') && { key: '16', icon: <RadarChartOutlined />, label: '网络发现' },
+            hasPermission('admin') && isModuleEnabled('ALERT') && { key: '17', icon: <ThunderboltOutlined />, label: '告警规则' },
+            hasPermission('admin') && { key: '18', icon: <ScheduleOutlined />, label: '定时任务' },
             { key: '3', icon: <SettingOutlined />, label: '系统设置' },
           ].filter(Boolean)} 
         />
