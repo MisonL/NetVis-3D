@@ -77,20 +77,42 @@ wechatRoutes.post('/test', authMiddleware, requireRole('admin'), async (c) => {
       return c.json({ code: 400, message: '请先配置企业微信信息' }, 400);
     }
 
-    // 模拟测试连接
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // 调用企业微信API获取access_token
+    const tokenUrl = `https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=${wechatConfig.corpId}&corpsecret=${wechatConfig.secret}`;
+    
+    const response = await fetch(tokenUrl);
+    const result = await response.json() as {
+      errcode?: number;
+      errmsg?: string;
+      access_token?: string;
+      expires_in?: number;
+    };
+
+    if (result.errcode && result.errcode !== 0) {
+      return c.json({
+        code: 400,
+        message: `企业微信连接失败: ${result.errmsg}`,
+        data: { errcode: result.errcode },
+      }, 400);
+    }
+
+    // 缓存access_token
+    (wechatConfig as Record<string, unknown>).accessToken = result.access_token;
+    (wechatConfig as Record<string, unknown>).tokenExpires = Date.now() + (result.expires_in || 7200) * 1000;
 
     return c.json({
       code: 0,
       message: '连接测试成功',
       data: {
-        corpName: '测试企业',
-        agentName: 'NetVis Pro',
+        corpId: wechatConfig.corpId,
+        agentId: wechatConfig.agentId,
         status: 'connected',
+        expiresIn: result.expires_in,
       },
     });
   } catch (error) {
-    return c.json({ code: 500, message: '连接测试失败' }, 500);
+    console.error('WeChat test connection error:', error);
+    return c.json({ code: 500, message: '连接测试失败: 网络错误' }, 500);
   }
 });
 
@@ -111,23 +133,75 @@ wechatRoutes.post('/send', authMiddleware, zValidator('json', z.object({
       return c.json({ code: 400, message: '企业微信功能未启用' }, 400);
     }
 
-    // 模拟发送消息
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // 获取access_token
+    const config = wechatConfig as Record<string, unknown>;
+    let accessToken = config.accessToken as string;
+    const tokenExpires = config.tokenExpires as number || 0;
+
+    // 检查token是否过期
+    if (!accessToken || Date.now() > tokenExpires) {
+      const tokenUrl = `https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=${wechatConfig.corpId}&corpsecret=${wechatConfig.secret}`;
+      const tokenRes = await fetch(tokenUrl);
+      const tokenData = await tokenRes.json() as { access_token?: string; expires_in?: number };
+      if (tokenData.access_token) {
+        accessToken = tokenData.access_token;
+        config.accessToken = accessToken;
+        config.tokenExpires = Date.now() + (tokenData.expires_in || 7200) * 1000;
+      }
+    }
+
+    if (!accessToken) {
+      return c.json({ code: 500, message: '无法获取access_token' }, 500);
+    }
+
+    // 构建消息体
+    const msgBody: Record<string, unknown> = {
+      touser: data.toUser?.join('|') || '@all',
+      toparty: data.toParty?.join('|') || '',
+      msgtype: data.type,
+      agentid: parseInt(wechatConfig.agentId),
+    };
+
+    if (data.type === 'text') {
+      msgBody.text = { content: data.content };
+    } else if (data.type === 'markdown') {
+      msgBody.markdown = { content: data.content };
+    } else if (data.type === 'textcard') {
+      msgBody.textcard = {
+        title: data.title || '通知',
+        description: data.content,
+        url: data.url || '',
+      };
+    }
+
+    // 发送消息
+    const sendUrl = `https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${accessToken}`;
+    const sendRes = await fetch(sendUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(msgBody),
+    });
+    const sendResult = await sendRes.json() as { errcode?: number; errmsg?: string; msgid?: string };
 
     // 审计日志
     await db.insert(schema.auditLogs).values({
       userId: currentUser.userId,
       action: 'send_wechat',
       resource: 'wechat',
-      details: JSON.stringify({ type: data.type, toUser: data.toUser }),
+      details: JSON.stringify({ type: data.type, toUser: data.toUser, result: sendResult }),
     });
+
+    if (sendResult.errcode && sendResult.errcode !== 0) {
+      return c.json({ code: 400, message: `发送失败: ${sendResult.errmsg}` }, 400);
+    }
 
     return c.json({
       code: 0,
       message: '消息发送成功',
-      data: { msgId: crypto.randomUUID() },
+      data: { msgId: sendResult.msgid },
     });
   } catch (error) {
+    console.error('WeChat send message error:', error);
     return c.json({ code: 500, message: '发送失败' }, 500);
   }
 });
@@ -145,14 +219,25 @@ wechatRoutes.post('/webhook', authMiddleware, zValidator('json', z.object({
       return c.json({ code: 400, message: '请先配置Webhook地址' }, 400);
     }
 
-    // 模拟发送webhook
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // 调用真实Webhook API
+    const response = await fetch(wechatConfig.webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json() as { errcode?: number; errmsg?: string };
+
+    if (result.errcode && result.errcode !== 0) {
+      return c.json({ code: 400, message: `Webhook发送失败: ${result.errmsg}` }, 400);
+    }
 
     return c.json({
       code: 0,
       message: 'Webhook发送成功',
     });
   } catch (error) {
+    console.error('WeChat webhook error:', error);
     return c.json({ code: 500, message: 'Webhook发送失败' }, 500);
   }
 });
