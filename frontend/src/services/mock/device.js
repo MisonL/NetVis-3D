@@ -16,7 +16,7 @@ export const deviceApi = {
     update: async (id, data) => {
         return { id, ...data };
     },
-    delete: async (id) => {
+    delete: async () => {
         // console.log('Mock Delete:', id);
         return { success: true };
     }
