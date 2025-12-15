@@ -354,6 +354,37 @@ export const complianceResults = pgTable('compliance_results', {
   checkedAt: timestamp('checked_at').notNull().defaultNow(),
 });
 
+// Syslog日志表 (TimescaleDB hypertable candidate)
+export const syslogMessages = pgTable('syslog_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  facility: integer('facility'),
+  severity: integer('severity'),
+  priority: integer('priority'),
+  timestamp: timestamp('timestamp'),
+  hostname: text('hostname'),
+  appName: text('app_name'),
+  procId: text('proc_id'),
+  msgId: text('msg_id'),
+  message: text('message'),
+  raw: text('raw'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// SNMP模板表
+export const snmpTemplates = pgTable('snmp_templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  vendor: text('vendor').notNull(),
+  version: text('version').notNull(), // v1/v2c/v3
+  community: text('community'),
+  securityLevel: text('security_level'),
+  authProtocol: text('auth_protocol'),
+  privProtocol: text('priv_protocol'),
+  oids: text('oids').notNull(), // JSON string of OID definitions
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 // 类型导出
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -379,3 +410,5 @@ export type UpgradeJob = typeof upgradeJobs.$inferSelect;
 export type UpgradeJobDevice = typeof upgradeJobDevices.$inferSelect;
 export type ComplianceRule = typeof complianceRules.$inferSelect;
 export type ComplianceResult = typeof complianceResults.$inferSelect;
+export type SyslogMessage = typeof syslogMessages.$inferSelect;
+export type SnmpTemplate = typeof snmpTemplates.$inferSelect;

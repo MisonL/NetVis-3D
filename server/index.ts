@@ -185,3 +185,8 @@ export default {
 };
 
 console.log('🚀 NetVis Pro API Server running on http://localhost:21301');
+
+// Start Syslog Server
+import { SyslogServer } from './services/syslog-server';
+const syslogServer = new SyslogServer(parseInt(process.env.SYSLOG_PORT || '514'));
+syslogServer.start();
