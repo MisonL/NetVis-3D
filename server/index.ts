@@ -50,6 +50,8 @@ import { tagsRoutes } from './routes/tags';
 import { batchTaskRoutes } from './routes/batch-task';
 import { changeManagementRoutes } from './routes/change-management';
 import { capacityRoutes } from './routes/capacity';
+import { cmdbRoutes } from './routes/cmdb';
+import { incidentRoutes } from './routes/incident';
 
 const app = new Hono();
 
@@ -109,6 +111,8 @@ app.route('/api/tags', tagsRoutes);
 app.route('/api/batch-tasks', batchTaskRoutes);
 app.route('/api/changes', changeManagementRoutes);
 app.route('/api/capacity', capacityRoutes);
+app.route('/api/cmdb', cmdbRoutes);
+app.route('/api/incidents', incidentRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径

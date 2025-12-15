@@ -92,6 +92,8 @@ import TagManagement from '../Tags/TagManagement';
 import BatchTaskManagement from '../Batch/BatchTaskManagement';
 import ChangeManagement from '../Change/ChangeManagement';
 import CapacityPlanning from '../Capacity/CapacityPlanning';
+import CmdbManagement from '../Cmdb/CmdbManagement';
+import IncidentManagement from '../Incident/IncidentManagement';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -198,6 +200,8 @@ const MainLayout = () => {
       case '46': return <BatchTaskManagement />;
       case '47': return <ChangeManagement />;
       case '48': return <CapacityPlanning />;
+      case '49': return <CmdbManagement />;
+      case '50': return <IncidentManagement />;
       default: return <Dashboard />;
     }
   };
