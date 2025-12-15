@@ -45,6 +45,7 @@ import { topologyLayoutRoutes } from './routes/topology-layout';
 import { sysConfigRoutes } from './routes/sys-config';
 import { securityRoutes } from './routes/security';
 import { performanceRoutes } from './routes/performance';
+import { networkQualityRoutes } from './routes/network-quality';
 
 const app = new Hono();
 
@@ -99,6 +100,7 @@ app.route('/api/topology-layout', topologyLayoutRoutes);
 app.route('/api/sys-config', sysConfigRoutes);
 app.route('/api/security', securityRoutes);
 app.route('/api/performance', performanceRoutes);
+app.route('/api/network-quality', networkQualityRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径

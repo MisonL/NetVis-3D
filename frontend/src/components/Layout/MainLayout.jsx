@@ -87,6 +87,7 @@ import DashboardCustomize from '../Dashboard/DashboardCustomize';
 import SystemConfig from '../System/SystemConfig';
 import SecurityCenter from '../Security/SecurityCenter';
 import PerformanceDashboard from '../Performance/PerformanceDashboard';
+import NetworkQuality from '../Network/NetworkQuality';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -188,6 +189,7 @@ const MainLayout = () => {
       case '41': return <SystemConfig />;
       case '42': return <SecurityCenter />;
       case '43': return <PerformanceDashboard />;
+      case '44': return <NetworkQuality />;
       default: return <Dashboard />;
     }
   };
