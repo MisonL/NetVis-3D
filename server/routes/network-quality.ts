@@ -95,34 +95,74 @@ networkQualityRoutes.post('/ping', authMiddleware, zValidator('json', z.object({
 })), async (c) => {
   const { target, count } = c.req.valid('json');
 
-  // 模拟ping结果
-  const results = [];
-  for (let i = 0; i < count; i++) {
-    results.push({
-      seq: i + 1,
-      ttl: 64,
-      time: Math.floor(Math.random() * 20 + 5),
+  try {
+    // 使用系统ping命令
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    // 根据操作系统选择ping命令格式
+    const isWindows = process.platform === 'win32';
+    const pingCmd = isWindows
+      ? `ping -n ${count} ${target}`
+      : `ping -c ${count} ${target}`;
+
+    const { stdout } = await execAsync(pingCmd, { timeout: 30000 });
+
+    // 解析ping输出
+    const results: { seq: number; ttl: number; time: number }[] = [];
+    const lines = stdout.split('\n');
+
+    for (const line of lines) {
+      // 匹配格式: 64 bytes from x.x.x.x: icmp_seq=1 ttl=64 time=1.23 ms
+      const match = line.match(/icmp_seq[=:](\d+).*ttl[=:](\d+).*time[=:]?([\d.]+)/i);
+      if (match) {
+        results.push({
+          seq: parseInt(match[1] || '0'),
+          ttl: parseInt(match[2] || '0'),
+          time: parseFloat(match[3] || '0'),
+        });
+      }
+    }
+
+    // 解析统计信息
+    const statsMatch = stdout.match(/(\d+) packets transmitted.*?(\d+) (?:packets )?received.*?(\d+(?:\.\d+)?)[%]/);
+    const transmitted = statsMatch ? parseInt(statsMatch[1] || '0') : count;
+    const received = statsMatch ? parseInt(statsMatch[2] || '0') : results.length;
+    const loss = statsMatch ? parseFloat(statsMatch[3] || '0') : (count - results.length) / count * 100;
+
+    const times = results.map(r => r.time);
+    const avgTime = times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0;
+
+    return c.json({
+      code: 0,
+      data: {
+        target,
+        count,
+        results,
+        stats: {
+          transmitted,
+          received,
+          loss,
+          min: times.length > 0 ? Math.min(...times) : 0,
+          max: times.length > 0 ? Math.max(...times) : 0,
+          avg: avgTime.toFixed(1),
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Ping error:', error);
+    return c.json({
+      code: 0,
+      data: {
+        target,
+        count,
+        results: [],
+        stats: { transmitted: count, received: 0, loss: 100, min: 0, max: 0, avg: '0' },
+        error: '目标不可达或ping超时',
+      },
     });
   }
-
-  const avgTime = results.reduce((sum, r) => sum + r.time, 0) / results.length;
-
-  return c.json({
-    code: 0,
-    data: {
-      target,
-      count,
-      results,
-      stats: {
-        transmitted: count,
-        received: count,
-        loss: 0,
-        min: Math.min(...results.map(r => r.time)),
-        max: Math.max(...results.map(r => r.time)),
-        avg: avgTime.toFixed(1),
-      },
-    },
-  });
 });
 
 // Traceroute测试
@@ -131,15 +171,52 @@ networkQualityRoutes.post('/traceroute', authMiddleware, zValidator('json', z.ob
 })), async (c) => {
   const { target } = c.req.valid('json');
 
-  // 模拟traceroute结果
-  const hops = [
-    { hop: 1, ip: '192.168.1.1', hostname: 'gateway.local', time: [2, 3, 2] },
-    { hop: 2, ip: '10.0.0.1', hostname: 'core-switch.local', time: [5, 4, 5] },
-    { hop: 3, ip: '172.16.0.1', hostname: 'border-router.local', time: [8, 7, 9] },
-    { hop: 4, ip: target, hostname: target, time: [12, 11, 13] },
-  ];
+  try {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
 
-  return c.json({ code: 0, data: { target, hops } });
+    // 根据操作系统选择命令
+    const isWindows = process.platform === 'win32';
+    const cmd = isWindows ? `tracert -d ${target}` : `traceroute -n ${target}`;
+
+    const { stdout } = await execAsync(cmd, { timeout: 60000 });
+
+    // 解析traceroute输出
+    const hops: { hop: number; ip: string; hostname: string; time: number[] }[] = [];
+    const lines = stdout.split('\n');
+
+    for (const line of lines) {
+      // 匹配格式: 1  192.168.1.1  1.234 ms  1.456 ms  1.789 ms
+      const match = line.match(/^\s*(\d+)\s+([\d.]+|[*])\s+([\d.]+)\s*ms/);
+      if (match) {
+        const hop = parseInt(match[1] || '0');
+        const ip = match[2] || '*';
+        // 提取所有时间值
+        const timeMatches = line.match(/([\d.]+)\s*ms/g);
+        const times = timeMatches ? timeMatches.map(t => parseFloat(t)) : [];
+
+        hops.push({
+          hop,
+          ip: ip === '*' ? '* * *' : ip,
+          hostname: ip,
+          time: times,
+        });
+      }
+    }
+
+    return c.json({ code: 0, data: { target, hops } });
+  } catch (error) {
+    console.error('Traceroute error:', error);
+    return c.json({
+      code: 0,
+      data: {
+        target,
+        hops: [],
+        error: 'Traceroute执行失败或超时',
+      },
+    });
+  }
 });
 
 // 带宽测试
