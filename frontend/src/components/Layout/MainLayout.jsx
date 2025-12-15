@@ -84,6 +84,7 @@ import KnowledgeBase from '../Knowledge/KnowledgeBase';
 import AssetInventory from '../Inventory/AssetInventory';
 import OncallManagement from '../Oncall/OncallManagement';
 import DashboardCustomize from '../Dashboard/DashboardCustomize';
+import SystemConfig from '../System/SystemConfig';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -182,6 +183,7 @@ const MainLayout = () => {
       case '38': return <AssetInventory />;
       case '39': return <OncallManagement />;
       case '40': return <DashboardCustomize />;
+      case '41': return <SystemConfig />;
       default: return <Dashboard />;
     }
   };

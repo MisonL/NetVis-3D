@@ -41,6 +41,8 @@ import { knowledgeRoutes } from './routes/knowledge';
 import { inventoryRoutes } from './routes/inventory';
 import { oncallRoutes } from './routes/oncall';
 import { dashboardRoutes } from './routes/dashboard-config';
+import { topologyLayoutRoutes } from './routes/topology-layout';
+import { sysConfigRoutes } from './routes/sys-config';
 
 const app = new Hono();
 
@@ -91,6 +93,8 @@ app.route('/api/knowledge', knowledgeRoutes);
 app.route('/api/inventory', inventoryRoutes);
 app.route('/api/oncall', oncallRoutes);
 app.route('/api/dashboard', dashboardRoutes);
+app.route('/api/topology-layout', topologyLayoutRoutes);
+app.route('/api/sys-config', sysConfigRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径
