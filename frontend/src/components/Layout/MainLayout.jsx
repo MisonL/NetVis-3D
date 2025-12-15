@@ -88,6 +88,10 @@ import SystemConfig from '../System/SystemConfig';
 import SecurityCenter from '../Security/SecurityCenter';
 import PerformanceDashboard from '../Performance/PerformanceDashboard';
 import NetworkQuality from '../Network/NetworkQuality';
+import TagManagement from '../Tags/TagManagement';
+import BatchTaskManagement from '../Batch/BatchTaskManagement';
+import ChangeManagement from '../Change/ChangeManagement';
+import CapacityPlanning from '../Capacity/CapacityPlanning';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -190,6 +194,10 @@ const MainLayout = () => {
       case '42': return <SecurityCenter />;
       case '43': return <PerformanceDashboard />;
       case '44': return <NetworkQuality />;
+      case '45': return <TagManagement />;
+      case '46': return <BatchTaskManagement />;
+      case '47': return <ChangeManagement />;
+      case '48': return <CapacityPlanning />;
       default: return <Dashboard />;
     }
   };

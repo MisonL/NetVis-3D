@@ -46,6 +46,10 @@ import { sysConfigRoutes } from './routes/sys-config';
 import { securityRoutes } from './routes/security';
 import { performanceRoutes } from './routes/performance';
 import { networkQualityRoutes } from './routes/network-quality';
+import { tagsRoutes } from './routes/tags';
+import { batchTaskRoutes } from './routes/batch-task';
+import { changeManagementRoutes } from './routes/change-management';
+import { capacityRoutes } from './routes/capacity';
 
 const app = new Hono();
 
@@ -101,6 +105,10 @@ app.route('/api/sys-config', sysConfigRoutes);
 app.route('/api/security', securityRoutes);
 app.route('/api/performance', performanceRoutes);
 app.route('/api/network-quality', networkQualityRoutes);
+app.route('/api/tags', tagsRoutes);
+app.route('/api/batch-tasks', batchTaskRoutes);
+app.route('/api/changes', changeManagementRoutes);
+app.route('/api/capacity', capacityRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径
