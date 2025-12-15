@@ -109,8 +109,32 @@ configRoutes.post(
         return c.json({ code: 404, message: "设备不存在" }, 404);
       }
 
-      // 模拟获取设备配置（实际应该SSH连接设备获取配置）
-      const mockConfig = `! Configuration for ${device.name}
+      let configContent: string;
+      let configSource: 'ssh' | 'mock' = 'mock';
+
+      // 尝试通过SSH获取真实配置
+      if (device.ipAddress) {
+        try {
+          const { getDeviceConfig } = await import('../utils/ssh-client');
+          // 使用设备的SSH凭据（如果有）
+          const sshResult = await getDeviceConfig({
+            host: device.ipAddress,
+            username: 'admin', // 实际应从设备凭据表获取
+            password: 'admin', // 实际应从设备凭据表获取
+          });
+
+          if (sshResult.success && sshResult.output) {
+            configContent = sshResult.output;
+            configSource = 'ssh';
+          }
+        } catch (sshError) {
+          console.warn('SSH获取配置失败，使用模拟配置:', sshError);
+        }
+      }
+
+      // 如果SSH失败，使用模拟配置
+      if (!configContent!) {
+        configContent = `! Configuration for ${device.name}
 hostname ${device.name}
 !
 interface GigabitEthernet0/0
@@ -118,8 +142,9 @@ interface GigabitEthernet0/0
  no shutdown
 !
 end`;
+      }
 
-      const hash = crypto.createHash("md5").update(mockConfig).digest("hex");
+      const hash = crypto.createHash("md5").update(configContent).digest("hex");
       const version = `v${Date.now()}`;
 
       // 保存到数据库
@@ -129,8 +154,8 @@ end`;
           deviceId,
           type,
           version,
-          content: mockConfig,
-          size: mockConfig.length,
+          content: configContent,
+          size: configContent.length,
           hash,
           description: description || "手动备份",
           createdBy: currentUser.userId,
