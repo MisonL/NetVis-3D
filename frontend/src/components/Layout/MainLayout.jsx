@@ -104,6 +104,8 @@ import LogAnalysis from '../Log/LogAnalysis';
 import NetworkTools from '../Tools/NetworkTools';
 import EventBusManagement from '../Event/EventBusManagement';
 import DataCenterManagement from '../DataCenter/DataCenterManagement';
+import AlertChannelManagement from '../AlertChannel/AlertChannelManagement';
+import TopologyExport from '../TopologyExport/TopologyExport';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -222,6 +224,8 @@ const MainLayout = () => {
       case '58': return <NetworkTools />;
       case '59': return <EventBusManagement />;
       case '60': return <DataCenterManagement />;
+      case '61': return <AlertChannelManagement />;
+      case '62': return <TopologyExport />;
       default: return <Dashboard />;
     }
   };
