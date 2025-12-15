@@ -343,9 +343,19 @@ const MainLayout = () => {
           onClick={({ key }) => { setActiveMenu(key); onMenuSelect(); }}
           style={{ borderRight: 'none', background: 'transparent' }}
           items={[
-            { key: '0', icon: <DashboardOutlined />, label: '系统仪表盘' },
-            { key: '1', icon: <DeploymentUnitOutlined />, label: '3D 拓扑视图' },
-            { key: '4', icon: <DeploymentUnitOutlined />, label: '2D 拓扑视图' },
+            // 📊 监控中心
+            {
+              key: 'monitor',
+              icon: <DashboardOutlined />,
+              label: '监控中心',
+              children: [
+                { key: '0', icon: <DashboardOutlined />, label: '系统仪表盘' },
+                { key: '1', icon: <DeploymentUnitOutlined />, label: '3D 拓扑视图' },
+                { key: '4', icon: <DeploymentUnitOutlined />, label: '2D 拓扑视图' },
+                { key: '15', icon: <DesktopOutlined />, label: '监控大屏' },
+                hasPermission('admin') && { key: '36', icon: <FundProjectionScreenOutlined />, label: '大屏配置' },
+              ].filter(Boolean),
+            },
             { key: '2', icon: <UnorderedListOutlined />, label: '设备列表' },
             isModuleEnabled('ALERT') && { key: '6', icon: <BellOutlined />, label: '告警中心' },
             { key: '7', icon: <DashboardOutlined />, label: '数据分析' },
@@ -357,7 +367,6 @@ const MainLayout = () => {
             hasPermission('admin') && isModuleEnabled('REPORT') && { key: '12', icon: <SettingOutlined />, label: '报表中心' },
             { key: '13', icon: <BellOutlined />, label: '通知中心' },
             hasPermission('admin') && { key: '14', icon: <DashboardOutlined />, label: '系统监控' },
-            { key: '15', icon: <DesktopOutlined />, label: '监控大屏' },
             hasPermission('admin') && { key: '16', icon: <RadarChartOutlined />, label: '网络发现' },
             hasPermission('admin') && isModuleEnabled('ALERT') && { key: '17', icon: <ThunderboltOutlined />, label: '告警规则' },
             hasPermission('admin') && { key: '18', icon: <ScheduleOutlined />, label: '定时任务' },
@@ -378,7 +387,6 @@ const MainLayout = () => {
             hasPermission('admin') && { key: '33', icon: <SafetyCertificateOutlined />, label: '合规审计' },
             hasPermission('admin') && { key: '34', icon: <ApartmentOutlined />, label: '脚本编排' },
             hasPermission('admin') && { key: '35', icon: <CloudDownloadOutlined />, label: '数据导出' },
-            hasPermission('admin') && { key: '36', icon: <FundProjectionScreenOutlined />, label: '监控大屏' },
             { key: '37', icon: <BookOutlined />, label: '知识库' },
             hasPermission('admin') && { key: '38', icon: <AuditOutlined />, label: '资产盘点' },
             hasPermission('admin') && { key: '39', icon: <TeamOutlined />, label: '值班管理' },
