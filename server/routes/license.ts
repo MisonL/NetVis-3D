@@ -68,47 +68,57 @@ licenseRoutes.get('/info', authMiddleware, async (c) => {
   }
 });
 
+// 读取密钥
+import fs from 'fs';
+import path from 'path';
+
+const publicKey = fs.readFileSync(path.join(process.cwd(), 'public_key.pem'), 'utf8');
+let privateKey = '';
+try {
+  privateKey = fs.readFileSync(path.join(process.cwd(), 'private_key.pem'), 'utf8');
+} catch (e) {
+  console.warn('Private key not found, trial license generation disabled');
+}
+
 // 导入/激活License
 licenseRoutes.post('/import', authMiddleware, requireRole('admin'), zValidator('json', licenseImportSchema), async (c) => {
   const { licenseKey } = c.req.valid('json');
 
   try {
-    // 解析License Key (简化版本 - 实际应使用RSA验签)
-    // 格式: NV-{edition}-{modules}-{devices}-{users}-{expiry}-{checksum}
-    const parts = licenseKey.split('-');
-    if (parts.length < 7 || parts[0] !== 'NV') {
-      return c.json({ code: 400, message: 'License Key格式无效' }, 400);
+    // 格式: PayloadBase64.SignatureBase64
+    const [payloadB64, signatureB64] = licenseKey.split('.');
+    if (!payloadB64 || !signatureB64) {
+      return c.json({ code: 400, message: 'License格式无效' }, 400);
     }
 
-    const edition = parts[1]?.toLowerCase() || 'basic';
-    const modulesStr = parts[2] || 'B';
-    const maxDevices = parseInt(parts[3] || '100') || 100;
-    const maxUsers = parseInt(parts[4] || '10') || 10;
-    const expiryDays = parseInt(parts[5] || '365') || 365;
-    const checksum = parts[6] || '';
-
-    // 简单校验 (实际应使用RSA)
-    const expectedChecksum = crypto
-      .createHash('md5')
-      .update(`${edition}${modulesStr}${maxDevices}${maxUsers}${expiryDays}NETVIS_SECRET`)
-      .digest('hex')
-      .substring(0, 8);
-
-    if (checksum !== expectedChecksum) {
-      return c.json({ code: 400, message: 'License Key校验失败' }, 400);
+    // 1. RSA验签
+    const verify = crypto.createVerify('SHA256');
+    verify.update(payloadB64);
+    verify.end();
+    
+    const isValid = verify.verify(publicKey, signatureB64, 'base64');
+    if (!isValid) {
+      return c.json({ code: 400, message: 'License签名验证失败' }, 400);
     }
 
-    // 解析模块
-    const moduleMap: Record<string, string[]> = {
-      'B': ['CORE', 'ASSET'],
-      'P': ['CORE', 'ASSET', 'ALERT', 'SSH', 'CONFIG', 'REPORT'],
-      'E': ['CORE', 'ASSET', 'ALERT', 'SSH', 'CONFIG', 'REPORT', 'AUDIT', 'HA', 'MOBILE', 'API'],
-    };
-    const modules = moduleMap[modulesStr] || ['CORE'];
+    // 2. 解析Payload
+    const payloadStr = Buffer.from(payloadB64, 'base64').toString('utf8');
+    const licenseData = JSON.parse(payloadStr);
 
-    // 计算过期时间
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + expiryDays);
+    // {
+    //   customer: string,
+    //   edition: string,
+    //   modules: string[],
+    //   limits: { maxDevices: number, maxUsers: number },
+    //   expiresAt: string,
+    //   nonce: string
+    // }
+
+    // 检查是否过期
+    const expiresAt = new Date(licenseData.expiresAt);
+    if (expiresAt < new Date()) {
+      return c.json({ code: 400, message: 'License已过期' }, 400);
+    }
 
     // 禁用旧License
     await db
@@ -121,11 +131,11 @@ licenseRoutes.post('/import', authMiddleware, requireRole('admin'), zValidator('
       .insert(schema.licenses)
       .values({
         licenseKey,
-        customerName: 'Enterprise Customer',
-        edition,
-        modules,
-        maxDevices,
-        maxUsers,
+        customerName: licenseData.customer || 'Unknown Customer',
+        edition: licenseData.edition || 'standard',
+        modules: licenseData.modules || ['CORE'],
+        maxDevices: licenseData.limits?.maxDevices || 10,
+        maxUsers: licenseData.limits?.maxUsers || 3,
         expiresAt,
         isActive: true,
       })
@@ -133,20 +143,18 @@ licenseRoutes.post('/import', authMiddleware, requireRole('admin'), zValidator('
 
     // 记录审计日志
     await db.insert(schema.auditLogs).values({
+      userId: c.get('user').userId,
       action: 'import',
       resource: 'license',
       resourceId: result[0]?.id,
-      details: JSON.stringify({ edition, modules, maxDevices }),
+      details: JSON.stringify({ customer: licenseData.customer, expiresAt }),
     });
 
     return c.json({
       code: 0,
       message: 'License激活成功',
       data: {
-        edition,
-        modules,
-        maxDevices,
-        maxUsers,
+        customer: licenseData.customer,
         expiresAt,
       },
     });
@@ -232,27 +240,39 @@ licenseRoutes.get('/modules', authMiddleware, async (c) => {
 
 // 生成试用License (仅开发用)
 licenseRoutes.post('/generate-trial', authMiddleware, requireRole('admin'), async (c) => {
+  if (!privateKey) {
+    return c.json({ code: 500, message: '服务端未配置私钥，无法生成License' }, 500);
+  }
+
   try {
-    const edition = 'professional';
-    const modulesStr = 'P';
-    const maxDevices = 100;
-    const maxUsers = 10;
-    const expiryDays = 30;
+    const payload = {
+      customer: 'Trial User',
+      edition: 'professional',
+      modules: ['CORE', 'ASSET', 'ALERT', 'SSH', 'CONFIG', 'REPORT', 'HA'],
+      limits: {
+        maxDevices: 100,
+        maxUsers: 10,
+      },
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      nonce: crypto.randomUUID(),
+    };
 
-    const checksum = crypto
-      .createHash('md5')
-      .update(`${edition}${modulesStr}${maxDevices}${maxUsers}${expiryDays}NETVIS_SECRET`)
-      .digest('hex')
-      .substring(0, 8);
+    const payloadStr = JSON.stringify(payload);
+    const payloadB64 = Buffer.from(payloadStr).toString('base64');
 
-    const licenseKey = `NV-${edition}-${modulesStr}-${maxDevices}-${maxUsers}-${expiryDays}-${checksum}`;
+    const sign = crypto.createSign('SHA256');
+    sign.update(payloadB64);
+    sign.end();
+    const signatureB64 = sign.sign(privateKey, 'base64');
+
+    const licenseKey = `${payloadB64}.${signatureB64}`;
 
     return c.json({
       code: 0,
       data: {
         licenseKey,
-        edition,
-        validDays: expiryDays,
+        edition: payload.edition,
+        validDays: 30,
       },
     });
   } catch (error) {

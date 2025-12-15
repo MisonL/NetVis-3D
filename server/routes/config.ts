@@ -353,10 +353,39 @@ configRoutes.post(
         })
         .returning();
 
-      // 模拟配置下发（实际应该SSH连接设备下发配置）
+      if (!device.ipAddress) {
+        return c.json({ code: 400, message: "设备IP地址未配置" }, 400);
+      }
+
+      // 真实配置下发
+      const { SSHClient } = await import('../utils/ssh-client');
+      // 默认凭据 (实际应从凭据库获取，这里暂用admin/admin)
+      const credentials = {
+        host: device.ipAddress,
+        username: 'admin',
+        password: 'admin',
+      };
+
+      const client = new SSHClient(credentials);
+      const connectResult = await client.connect();
+
+      if (!connectResult.success) {
+        throw new Error(`连接设备失败: ${connectResult.error}`);
+      }
+
+      try {
+        const configLines = configContent.split('\n').filter((line: string) => line.trim().length > 0);
+        const execResult = await client.configureDevice(configLines);
+        
+        if (!execResult.success) {
+          throw new Error(`配置执行失败: ${execResult.error}`);
+        }
+      } finally {
+        client.disconnect();
+      }
+
       const linesApplied = configContent.split("\n").length;
-      const duration =
-        Date.now() - startTime + Math.floor(Math.random() * 2000);
+      const duration = Date.now() - startTime;
 
       // 更新下发状态
       await db

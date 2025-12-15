@@ -104,53 +104,121 @@ discoveryRoutes.post('/start', authMiddleware, requireRole('admin'), zValidator(
     
     discoveryTasks.set(taskId, task);
 
-    // 模拟异步发现过程
+    // 真实异步发现过程
     (async () => {
       try {
         task.status = 'running';
         
+        // 动态导入Node模块
+        const { exec } = await import('node:child_process');
+        const { Socket } = await import('node:net');
+        const util = await import('node:util');
+        const execAsync = util.promisify(exec);
+
+        // 端口检测辅助函数
+        const checkPort = (ip: string, port: number) => new Promise<boolean>((resolve) => {
+          const socket = new Socket();
+          socket.setTimeout(1000);
+          socket.on('connect', () => { socket.destroy(); resolve(true); });
+          socket.on('timeout', () => { socket.destroy(); resolve(false); });
+          socket.on('error', () => { socket.destroy(); resolve(false); });
+          socket.connect(port, ip);
+        });
+
         // 解析CIDR获取IP范围
         const parts = network.split('/');
         const baseIp = parts[0] || '192.168.1.0';
         const maskBits = parts[1] || '24';
         const ipParts = baseIp.split('.').map(Number);
-        const mask = parseInt(maskBits);
-        const hostBits = 32 - mask;
-        const totalHosts = Math.min(Math.pow(2, hostBits) - 2, 254); // 最多扫描254个
+        const totalHosts = Math.min(254, 254); // 限制单次最大扫描254个IP
+        
+        let scannedCount = 0;
 
-        // 模拟扫描进度
-        for (let i = 0; i < totalHosts; i++) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-          task.progress = Math.round((i / totalHosts) * 100);
+        // 分批扫描，控制并发
+        const batchSize = concurrency;
+        for (let i = 0; i < totalHosts; i += batchSize) {
+          const batchPromises = [];
           
-          // 模拟发现设备（随机）
-          if (Math.random() < 0.15) {
-            const ip0 = ipParts[0] ?? 192;
-            const ip1 = ipParts[1] ?? 168;
-            const ip2 = ipParts[2] ?? 1;
-            const ip3 = ipParts[3] ?? 0;
-            const deviceIp = `${ip0}.${ip1}.${ip2}.${(ip3 + i + 1) % 256}`;
-            const deviceTypes = ['router', 'switch', 'server', 'firewall', 'access_point'];
-            const vendors = ['Cisco', 'Huawei', 'H3C', 'Juniper', 'Aruba'];
-            const openPorts = scanPorts.filter(() => Math.random() < 0.3);
-            const selectedType = deviceTypes[Math.floor(Math.random() * deviceTypes.length)] ?? 'router';
-            const selectedVendor = vendors[Math.floor(Math.random() * vendors.length)] ?? 'Unknown';
+          for (let j = 0; j < batchSize && (i + j) < totalHosts; j++) {
+            const currentIdx = i + j;
+            // 简单处理/24网段
+            const ip3Base = ipParts[3] || 0;
+            const targetIp = `${ipParts[0]}.${ipParts[1]}.${ipParts[2]}.${(ip3Base + currentIdx + 1) % 256}`;
             
-            task.results.push({
-              ip: deviceIp,
-              hostname: `device-${Math.random().toString(36).substring(7)}`,
-              type: selectedType,
-              vendor: selectedVendor,
-              status: 'online',
-              ports: openPorts,
+            // 跳过广播地址和网关(通常.1) - 这里不做严格排斥，全部扫一遍
+            
+            batchPromises.push(async () => {
+              try {
+                // 1. Ping检测
+                try {
+                  // Mac/Linux: -c 1 -W 1 (秒). Windows: -n 1 -w 1000 (毫秒)
+                  // 假设运行在Mac/Linux容器环境
+                  await execAsync(`ping -c 1 -W 1 ${targetIp}`);
+                } catch (e) {
+                  return null; // Ping不通，跳过
+                }
+
+                // 2. 端口检测
+                const openPorts: number[] = [];
+                for (const port of scanPorts) {
+                  if (await checkPort(targetIp, port)) {
+                    openPorts.push(port);
+                  }
+                }
+
+                // 3. 识别设备类型
+                let type = 'unknown';
+                let vendor = 'Unknown';
+                
+                if (openPorts.includes(161)) {
+                  type = 'switch'; // 暂定，实际应查SNMP
+                  vendor = 'Cisco'; // 猜测
+                } else if (openPorts.includes(22)) {
+                  type = 'linux';
+                } else if (openPorts.includes(80) || openPorts.includes(443)) {
+                  type = 'server';
+                }
+
+                if (openPorts.length > 0) {
+                  return {
+                    ip: targetIp,
+                    hostname: `Device-${targetIp}`,
+                    type,
+                    vendor,
+                    status: 'online' as const,
+                    ports: openPorts
+                  };
+                }
+                return null;
+              } catch (err) {
+                return null;
+              }
             });
-            task.foundDevices = task.results.length;
           }
+
+          // 执行批次
+          const results = await Promise.all(batchPromises.map(p => p()));
+          
+          // 收集结果
+          results.forEach(res => {
+            if (res) {
+              task.results.push(res);
+              task.foundDevices++;
+            }
+          });
+
+          scannedCount += batchPromises.length;
+          task.progress = Math.round((scannedCount / totalHosts) * 100);
+          
+          // 如果任务被取消/失败
+          if ((task.status as string) === 'failed') break;
         }
 
-        task.status = 'completed';
-        task.progress = 100;
-        task.completedAt = new Date();
+        if ((task.status as string) !== 'failed') {
+          task.status = 'completed';
+          task.progress = 100;
+          task.completedAt = new Date();
+        }
       } catch (err) {
         task.status = 'failed';
         task.error = err instanceof Error ? err.message : '发现过程出错';
