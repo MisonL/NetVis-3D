@@ -7,6 +7,7 @@ const mockQuery = {
   orderBy: () => mockQuery,
   limit: () => mockQuery,
   offset: () => mockQuery,
+  groupBy: () => mockQuery,
   then: (resolve: any) => resolve([]), // Default empty list
 };
 
@@ -16,6 +17,7 @@ mock.module('../db', () => ({
     insert: () => ({ values: () => ({ returning: () => Promise.resolve([{ id: 'mock-id', oids: '[]' }]) }) }),
     update: () => ({ set: () => ({ where: () => Promise.resolve([]) }) }),
     delete: () => ({ where: () => ({ returning: () => Promise.resolve([{id:'mock-id'}]) }) }),
+    execute: () => Promise.resolve([{ bucket: new Date(), cnt: 10 }]),
   },
   checkDbConnection: () => Promise.resolve(true),
   schema: {
@@ -72,6 +74,16 @@ describe('Phase 14 Routes', async () => {
     it('GET /logs/system should return logs', async () => {
         const res = await logsRoutes.request('/system');
         expect(res.status).toBe(200);
+    });
+
+    it('GET /logs/stats should return real aggregation', async () => {
+        const res = await logsRoutes.request('/stats');
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as any;
+        expect(body.data.total).toBeDefined();
+        // bySource and hourly are now implemented
+        expect(body.data.bySource).toBeDefined();
+        expect(body.data.hourly).toBeDefined();
     });
 
     // Traffic

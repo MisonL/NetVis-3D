@@ -116,27 +116,47 @@ logsRoutes.get('/stats', authMiddleware, requireRole('admin'), async (c) => {
     const total = errorCount + warnCount + infoCount;
 
     // By Source (Top 5)
-    // Drizzle aggregation groupBy?
-    // Using SQL for complex:
-    /*
-    const bySourceRes = await db.execute(sql`SELECT hostname, count(*) as count FROM syslog_messages GROUP BY hostname ORDER BY count DESC LIMIT 5`);
-    */
-    // Fallback: simple placeholders or count unique?
-    // I will use SQL query via db.execute if supported by driver (postgres.js).
+    const sourceResult = await db.select({
+      source: schema.syslogMessages.hostname,
+      count: count(),
+    })
+    .from(schema.syslogMessages)
+    .groupBy(schema.syslogMessages.hostname)
+    .orderBy(desc(count()))
+    .limit(5);
+
+    const bySource: Record<string, number> = {};
+    sourceResult.forEach(row => {
+      if (row.source) bySource[row.source] = row.count;
+    });
     
     // Hourly Trend (Last 24h)
-    /*
-    SELECT time_bucket('1 hour', timestamp) as hour, count(*) FROM syslog_messages WHERE timestamp > NOW() - INTERVAL '24 hours' GROUP BY hour ORDER BY hour
-    */
-    // Return empty if aggregation complex. Just basic stats.
+    // Using Postgres date_trunc/to_char or similar. Since we used time_bucket elsewhere, we can use that for consistency if TimescaleDB.
+    // Fallback to standard SQL for broader compatibility if needed, but project uses TimescaleDB features.
+    // timestamp > NOW() - INTERVAL '24 hours'
+    
+    const hourlyResult = await db.execute(sql`
+      SELECT 
+        time_bucket('1 hour', timestamp) as bucket,
+        COUNT(*) as cnt
+      FROM ${schema.syslogMessages}
+      WHERE timestamp > NOW() - INTERVAL '24 hours'
+      GROUP BY bucket
+      ORDER BY bucket ASC
+    `);
+
+    const hourly = hourlyResult.map((row: any) => ({
+      hour: new Date(row.bucket).getHours() + ':00',
+      count: Number(row.cnt)
+    }));
 
     return c.json({
       code: 0,
       data: {
         total,
         byLevel: { info: infoCount, warn: warnCount, error: errorCount },
-        bySource: {}, // TODO: Real aggregation
-        hourly: [], // TODO: Real aggregation
+        bySource,
+        hourly,
       },
     });
   } catch (error) {
