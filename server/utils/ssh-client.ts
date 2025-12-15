@@ -181,6 +181,36 @@ export class SSHClient {
   }
 
   /**
+   * 上传文件到设备 (SFTP)
+   */
+  async uploadFile(localPath: string, remotePath: string): Promise<SSHResult> {
+    if (!this.connected) {
+      return { success: false, error: '未连接到设备' };
+    }
+
+    return new Promise((resolve) => {
+      this.client.sftp((err, sftp) => {
+        if (err) {
+          resolve({ success: false, error: `SFTP打开失败: ${err.message}` });
+          return;
+        }
+
+        sftp.fastPut(localPath, remotePath, (err) => {
+          if (err) {
+            resolve({ success: false, error: `文件上传失败: ${err.message}` });
+          } else {
+            resolve({ success: true, output: '文件上传成功' });
+          }
+          // sftp.end(); // ssh2 client manages channels, usually we don't end session just channel, sftp wrapper might not have end() on wrapper? 
+          // Check ssh2 docs: sftp.end() exists? No, sftp is a stream/wrapper. 
+          // Usually we just let it finish. 
+          // Assuming single use.
+        });
+      });
+    });
+  }
+
+  /**
    * 断开连接
    */
   disconnect(): void {

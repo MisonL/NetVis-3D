@@ -70,7 +70,11 @@ import { networkDiagnosticsRoutes } from './routes/network-diagnostics';
 import { accessControlRoutes } from './routes/access-control';
 import { rateLimitRoutes } from './routes/rate-limit';
 
-const app = new Hono();
+const app = new Hono<{
+  Variables: {
+    user: JwtPayload;
+  };
+}>();
 
 // 中间件
 app.use('*', logger());

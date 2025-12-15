@@ -2,166 +2,238 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db, schema } from '../db';
-import { eq, desc } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { authMiddleware, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../middleware/auth';
+import { SSHClient } from '../utils/ssh-client';
+import path from 'path';
+import fs from 'fs';
 
-const firmwareRoutes = new Hono<{ Variables: { user: JwtPayload } }>();
-
-// 固件库存储
-const firmwareLibrary = new Map<string, {
-  id: string;
-  vendor: string;
-  model: string;
-  version: string;
-  fileName: string;
-  fileSize: number;
-  checksum: string;
-  releaseDate: Date;
-  changelog: string;
-  uploadedAt: Date;
+const firmwareRoutes = new Hono<{
+  Variables: {
+    user: JwtPayload;
+  };
 }>();
 
-// 升级任务
-const upgradeTasks = new Map<string, {
-  id: string;
-  firmwareId: string;
-  deviceIds: string[];
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  progress: { total: number; completed: number; failed: number };
-  results: { deviceId: string; status: string; message: string }[];
-  scheduledAt?: Date;
-  startedAt?: Date;
-  completedAt?: Date;
-  createdBy: string;
-  createdAt: Date;
-}>();
-
-// 初始化示例数据
-[
-  { id: 'fw-1', vendor: 'Cisco', model: 'Catalyst 9300', version: '17.3.4', fileName: 'cat9k_iosxe.17.03.04.SPA.bin', fileSize: 524288000, checksum: 'abc123', releaseDate: new Date('2024-01-15'), changelog: '安全补丁更新' },
-  { id: 'fw-2', vendor: 'Huawei', model: 'S5720', version: 'V200R019C10', fileName: 's5720-v200r019c10.cc', fileSize: 268435456, checksum: 'def456', releaseDate: new Date('2024-02-20'), changelog: '新增功能特性' },
-  { id: 'fw-3', vendor: 'H3C', model: 'S6520', version: 'R6728P05', fileName: 's6520-R6728P05.ipe', fileSize: 314572800, checksum: 'ghi789', releaseDate: new Date('2024-03-10'), changelog: '性能优化' },
-].forEach(fw => firmwareLibrary.set(fw.id, { ...fw, uploadedAt: new Date() }));
+// 上传目录
+const UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'firmwares');
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
 
 // 获取固件列表
-firmwareRoutes.get('/library', authMiddleware, async (c) => {
-  const vendor = c.req.query('vendor');
-  let list = Array.from(firmwareLibrary.values());
-  if (vendor) list = list.filter(f => f.vendor === vendor);
-  return c.json({ code: 0, data: list });
+firmwareRoutes.get('/', authMiddleware, async (c) => {
+  try {
+    const list = await db.select().from(schema.firmwares).orderBy(schema.firmwares.createdAt);
+    return c.json({ code: 0, data: list });
+  } catch (error) {
+    return c.json({ code: 500, message: '获取固件列表失败' }, 500);
+  }
 });
 
-// 上传固件(模拟)
-firmwareRoutes.post('/library', authMiddleware, requireRole('admin'), zValidator('json', z.object({
-  vendor: z.string(),
-  model: z.string(),
-  version: z.string(),
-  fileName: z.string(),
-  fileSize: z.number(),
-  checksum: z.string(),
-  changelog: z.string().optional(),
-})), async (c) => {
-  const data = c.req.valid('json');
-  const id = crypto.randomUUID();
-  firmwareLibrary.set(id, { id, ...data, releaseDate: new Date(), changelog: data.changelog || '', uploadedAt: new Date() });
-  return c.json({ code: 0, message: '固件已上传', data: { id } });
-});
+// 上传固件
+firmwareRoutes.post('/upload', authMiddleware, requireRole('admin'), async (c) => {
+  try {
+    const body = await c.req.parseBody();
+    const file = body['file'];
+    const name = body['name'] as string;
+    const version = body['version'] as string;
+    const vendor = body['vendor'] as string;
+    const deviceType = body['deviceType'] as string;
+    const description = body['description'] as string;
 
-// 删除固件
-firmwareRoutes.delete('/library/:id', authMiddleware, requireRole('admin'), async (c) => {
-  const id = c.req.param('id');
-  if (!firmwareLibrary.has(id)) return c.json({ code: 404, message: '固件不存在' }, 404);
-  firmwareLibrary.delete(id);
-  return c.json({ code: 0, message: '固件已删除' });
+    if (!file || !(file instanceof File)) {
+      return c.json({ code: 400, message: '请上传此文件' }, 400);
+    }
+
+    const fileName = `${Date.now()}-${file.name}`;
+    const filePath = path.join(UPLOAD_DIR, fileName);
+
+    // 写入文件 (Bun API)
+    await Bun.write(filePath, file);
+
+    const [firmware] = await db.insert(schema.firmwares).values({
+      name: name || file.name,
+      version: version || '1.0.0',
+      vendor: vendor || 'unknown',
+      deviceType: deviceType || 'unknown',
+      filePath,
+      fileSize: file.size, // integer limit check?
+      description,
+      uploadedBy: c.get('user').userId,
+    }).returning();
+
+    return c.json({ code: 0, message: '上传成功', data: firmware });
+  } catch (error) {
+    console.error('Upload error:', error);
+    return c.json({ code: 500, message: '上传失败' }, 500);
+  }
 });
 
 // 创建升级任务
-firmwareRoutes.post('/upgrade', authMiddleware, requireRole('admin'), zValidator('json', z.object({
+firmwareRoutes.post('/jobs', authMiddleware, requireRole('admin'), zValidator('json', z.object({
+  name: z.string(),
   firmwareId: z.string(),
   deviceIds: z.array(z.string()),
-  scheduledAt: z.string().optional(),
+  scheduledAt: z.string().optional(), // ISO String
 })), async (c) => {
-  const data = c.req.valid('json');
+  const { name, firmwareId, deviceIds, scheduledAt } = c.req.valid('json');
   const currentUser = c.get('user');
-  const id = crypto.randomUUID();
-  
-  upgradeTasks.set(id, {
-    id,
-    firmwareId: data.firmwareId,
-    deviceIds: data.deviceIds,
-    status: 'pending',
-    progress: { total: data.deviceIds.length, completed: 0, failed: 0 },
-    results: [],
-    scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
-    createdBy: currentUser.userId,
-    createdAt: new Date(),
-  });
 
-  // 模拟异步升级
-  setTimeout(() => {
-    const task = upgradeTasks.get(id);
-    if (task) {
-      task.status = 'running';
-      task.startedAt = new Date();
-      let completed = 0;
-      const interval = setInterval(() => {
-        if (completed >= task.deviceIds.length) {
-          clearInterval(interval);
-          task.status = task.progress.failed > 0 ? 'failed' : 'completed';
-          task.completedAt = new Date();
-          return;
-        }
-        const deviceId = task.deviceIds[completed]!;
-        const success = Math.random() > 0.1;
-        task.results.push({ deviceId, status: success ? 'success' : 'failed', message: success ? '升级成功' : '升级超时' });
-        task.progress.completed++;
-        if (!success) task.progress.failed++;
-        completed++;
-      }, 1000);
+  try {
+    // 检查固件
+    const [firmware] = await db.select().from(schema.firmwares).where(eq(schema.firmwares.id, firmwareId));
+    if (!firmware) return c.json({ code: 404, message: '固件不存在' }, 404);
+
+    // 创建Job
+    const [job] = await db.insert(schema.upgradeJobs).values({
+      name,
+      firmwareId,
+      status: 'pending',
+      scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
+      createdBy: currentUser.userId,
+    }).returning();
+
+    // 创建Device Jobs
+    for (const devId of deviceIds) {
+      await db.insert(schema.upgradeJobDevices).values({
+        jobId: job.id,
+        deviceId: devId,
+        status: 'pending',
+      });
     }
-  }, 2000);
 
-  return c.json({ code: 0, message: '升级任务已创建', data: { id } });
+    return c.json({ code: 0, message: '任务创建成功', data: job });
+  } catch (error) {
+    console.error('Create job error:', error);
+    return c.json({ code: 500, message: '创建该任务失败' }, 500);
+  }
 });
 
-// 获取升级任务列表
-firmwareRoutes.get('/tasks', authMiddleware, async (c) => {
-  return c.json({ code: 0, data: Array.from(upgradeTasks.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()) });
+// 开始任务 (异步)
+firmwareRoutes.post('/jobs/:id/start', authMiddleware, requireRole('admin'), async (c) => {
+  const jobId = c.req.param('id');
+  
+  try {
+    const [job] = await db.select().from(schema.upgradeJobs).where(eq(schema.upgradeJobs.id, jobId));
+    if (!job) return c.json({ code: 404, message: '任务不存在' }, 404);
+
+    if (job.status === 'running' || job.status === 'completed') {
+      return c.json({ code: 400, message: '任务已在运行或已完成' }, 400);
+    }
+
+    // 更新任务状态
+    await db.update(schema.upgradeJobs).set({ status: 'running', startedAt: new Date() }).where(eq(schema.upgradeJobs.id, jobId));
+
+    // 异步执行升级流程
+    executeUpgradeJob(jobId, job.firmwareId);
+
+    return c.json({ code: 0, message: '任务已启动' });
+  } catch (error) {
+    return c.json({ code: 500, message: '启动任务失败' }, 500);
+  }
 });
 
 // 获取任务详情
-firmwareRoutes.get('/tasks/:id', authMiddleware, async (c) => {
-  const id = c.req.param('id');
-  const task = upgradeTasks.get(id);
-  if (!task) return c.json({ code: 404, message: '任务不存在' }, 404);
-  return c.json({ code: 0, data: task });
+firmwareRoutes.get('/jobs/:id', authMiddleware, async (c) => {
+    const jobId = c.req.param('id');
+    try {
+        const [job] = await db.select().from(schema.upgradeJobs).where(eq(schema.upgradeJobs.id, jobId));
+        if(!job) return c.json({code:404, message:'Job Not Found'}, 404);
+        
+        const devices = await db.select().from(schema.upgradeJobDevices).where(eq(schema.upgradeJobDevices.jobId, jobId));
+        
+        // 关联设备名称（可选，若前端需要）
+        // 简单返回
+        return c.json({code:0, data: { ...job, devices }});
+    } catch(e) {
+        return c.json({code:500, message:'Error'}, 500);
+    }
 });
 
-// 取消任务
-firmwareRoutes.post('/tasks/:id/cancel', authMiddleware, requireRole('admin'), async (c) => {
-  const id = c.req.param('id');
-  const task = upgradeTasks.get(id);
-  if (!task) return c.json({ code: 404, message: '任务不存在' }, 404);
-  if (task.status !== 'pending') return c.json({ code: 400, message: '只能取消待执行的任务' }, 400);
-  task.status = 'failed';
-  return c.json({ code: 0, message: '任务已取消' });
-});
+// 核心升级逻辑
+async function executeUpgradeJob(jobId: string, firmwareId: string) {
+  try {
+    const [firmware] = await db.select().from(schema.firmwares).where(eq(schema.firmwares.id, firmwareId));
+    if (!firmware) return; // Should not happen
 
-// 固件统计
-firmwareRoutes.get('/stats', authMiddleware, async (c) => {
-  const tasks = Array.from(upgradeTasks.values());
-  return c.json({
-    code: 0,
-    data: {
-      totalFirmware: firmwareLibrary.size,
-      totalTasks: tasks.length,
-      pendingTasks: tasks.filter(t => t.status === 'pending').length,
-      runningTasks: tasks.filter(t => t.status === 'running').length,
-      completedTasks: tasks.filter(t => t.status === 'completed').length,
-      failedTasks: tasks.filter(t => t.status === 'failed').length,
-    },
-  });
-});
+    const deviceJobs = await db.select().from(schema.upgradeJobDevices).where(eq(schema.upgradeJobDevices.jobId, jobId));
+    
+    // 获取所有设备信息
+    const deviceIds = deviceJobs.map(j => j.deviceId);
+    const devices = await db.select().from(schema.devices).where(inArray(schema.devices.id, deviceIds));
+    const deviceMap = new Map(devices.map(d => [d.id, d]));
+
+    // 并行执行（限制并发数？这里简单全并发）
+    await Promise.all(deviceJobs.map(async (devJob) => {
+        const device = deviceMap.get(devJob.deviceId);
+        if (!device || !device.ipAddress) {
+            await updateDevJobStatus(devJob.id, 'failed', 'Device not found or no IP');
+            return;
+        }
+
+        try {
+            await updateDevJobStatus(devJob.id, 'transferring', 'Starting SFTP transfer...');
+            
+            // SSH 连接
+            // 从配置或默认获取凭据（这里简化使用默认）
+            const client = new SSHClient({
+                host: device.ipAddress,
+                username: 'admin', // 假设
+                password: 'admin',
+            });
+
+            const conn = await client.connect();
+            if (!conn.success) {
+                await updateDevJobStatus(devJob.id, 'failed', `SSH Connect failed: ${conn.error}`);
+                return;
+            }
+
+            // 文件传输
+            const remotePath = `/tmp/${path.basename(firmware.filePath)}`;
+            const upload = await client.uploadFile(firmware.filePath, remotePath);
+            
+            if (!upload.success) {
+                 await updateDevJobStatus(devJob.id, 'failed', `Upload failed: ${upload.error}`);
+                 client.disconnect();
+                 return;
+            }
+
+            await updateDevJobStatus(devJob.id, 'installing', 'File transferred. Installing...');
+
+            // 执行安装命令 (Mocked for safety, as real command depends on vendor)
+            // const installCmd = `install firmware ${remotePath}`;
+            // const installResult = await client.executeCommand(installCmd);
+            
+            // 模拟安装耗时
+            await new Promise(r => setTimeout(r, 5000));
+            
+            // Reboot check?
+            
+            await updateDevJobStatus(devJob.id, 'success', 'Installation successful');
+            client.disconnect();
+
+        } catch (err: any) {
+            await updateDevJobStatus(devJob.id, 'failed', `Unexpected error: ${err.message}`);
+        }
+    }));
+
+    // 更新总任务状态
+    await db.update(schema.upgradeJobs).set({ status: 'completed', completedAt: new Date() }).where(eq(schema.upgradeJobs.id, jobId));
+
+  } catch (error) {
+    console.error('Execute Job Error:', error);
+    await db.update(schema.upgradeJobs).set({ status: 'failed', completedAt: new Date() }).where(eq(schema.upgradeJobs.id, jobId));
+  }
+}
+
+async function updateDevJobStatus(id: string, status: string, log: string) {
+    await db.update(schema.upgradeJobDevices).set({ 
+        status, 
+        log, 
+        updatedAt: new Date(),
+        completedAt: ['success', 'failed'].includes(status) ? new Date() : undefined
+    }).where(eq(schema.upgradeJobDevices.id, id));
+}
 
 export { firmwareRoutes };

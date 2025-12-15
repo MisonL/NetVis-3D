@@ -288,6 +288,48 @@ export const topologyLinks = pgTable('topology_links', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+// 固件表
+export const firmwares = pgTable('firmwares', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  version: text('version').notNull(),
+  vendor: text('vendor').notNull(), // cisco, huawei, etc.
+  deviceType: text('device_type').notNull(), // router, switch
+  filePath: text('file_path').notNull(), // local storage path
+  fileSize: integer('file_size').notNull(),
+  checksum: text('checksum'), // SHA256
+  description: text('description'),
+  uploadedBy: uuid('uploaded_by').references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// 升级任务表
+export const upgradeJobs = pgTable('upgrade_jobs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  firmwareId: uuid('firmware_id').references(() => firmwares.id).notNull(),
+  name: text('name').notNull(),
+  status: text('status').notNull().default('pending'), // pending, running, completed, partially_failed, failed
+  scheduledAt: timestamp('scheduled_at'),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// 设备升级详情表
+export const upgradeJobDevices = pgTable('upgrade_job_devices', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  jobId: uuid('job_id').references(() => upgradeJobs.id).notNull(),
+  deviceId: uuid('device_id').references(() => devices.id).notNull(),
+  status: text('status').notNull().default('pending'), // pending, transferring, installing, rebooting, success, failed
+  progress: integer('progress').default(0), // %
+  log: text('log'),
+  error: text('error'),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 // 类型导出
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -308,3 +350,6 @@ export type Collector = typeof collectors.$inferSelect;
 export type DeviceMetric = typeof deviceMetrics.$inferSelect;
 export type InterfaceMetric = typeof interfaceMetrics.$inferSelect;
 export type TopologyLink = typeof topologyLinks.$inferSelect;
+export type Firmware = typeof firmwares.$inferSelect;
+export type UpgradeJob = typeof upgradeJobs.$inferSelect;
+export type UpgradeJobDevice = typeof upgradeJobDevices.$inferSelect;
