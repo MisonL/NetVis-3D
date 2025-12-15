@@ -40,6 +40,7 @@ import { bigscreenRoutes } from './routes/bigscreen';
 import { knowledgeRoutes } from './routes/knowledge';
 import { inventoryRoutes } from './routes/inventory';
 import { oncallRoutes } from './routes/oncall';
+import { dashboardRoutes } from './routes/dashboard-config';
 
 const app = new Hono();
 
@@ -89,6 +90,7 @@ app.route('/api/bigscreen', bigscreenRoutes);
 app.route('/api/knowledge', knowledgeRoutes);
 app.route('/api/inventory', inventoryRoutes);
 app.route('/api/oncall', oncallRoutes);
+app.route('/api/dashboard', dashboardRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径

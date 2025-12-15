@@ -83,6 +83,7 @@ import BigScreen from '../BigScreen/BigScreen';
 import KnowledgeBase from '../Knowledge/KnowledgeBase';
 import AssetInventory from '../Inventory/AssetInventory';
 import OncallManagement from '../Oncall/OncallManagement';
+import DashboardCustomize from '../Dashboard/DashboardCustomize';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -180,6 +181,7 @@ const MainLayout = () => {
       case '37': return <KnowledgeBase />;
       case '38': return <AssetInventory />;
       case '39': return <OncallManagement />;
+      case '40': return <DashboardCustomize />;
       default: return <Dashboard />;
     }
   };

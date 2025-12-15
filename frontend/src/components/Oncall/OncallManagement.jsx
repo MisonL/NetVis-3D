@@ -41,7 +41,6 @@ const OncallManagement = () => {
   const [escalationRules, setEscalationRules] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
   const [handoverModal, setHandoverModal] = useState(false);
   const [form] = Form.useForm();
 
