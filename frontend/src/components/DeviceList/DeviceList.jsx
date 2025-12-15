@@ -10,10 +10,11 @@ import {
     DownloadOutlined,
     AimOutlined,
     SettingOutlined,
-    ExportOutlined,
-    EyeOutlined
+    ImportOutlined,
+    InboxOutlined
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
+import { Empty } from 'antd'; // Import Empty
 
 const { Dragger } = Upload;
 import { useSimulation } from '../../services/SimulationService';
@@ -46,6 +47,22 @@ const DeviceList = ({ onLocate }) => {
     const handleRefresh = () => {
         setLoading(true);
         setTimeout(() => setLoading(false), 800);
+    };
+
+    const handleBatchDelete = () => {
+        Modal.confirm({
+            title: '确认批量删除',
+            content: `确定要删除选中的 ${selectedRowKeys.length} 台设备吗？`,
+            okText: '确认',
+            okType: 'danger',
+            cancelText: '取消',
+            onOk: () => {
+                const newDevices = devices.filter(d => !selectedRowKeys.includes(d.id));
+                updateDevices(newDevices);
+                setSelectedRowKeys([]);
+                message.success('批量删除成功');
+            }
+        });
     };
 
     const handleDownloadTemplate = () => {
@@ -307,12 +324,10 @@ const DeviceList = ({ onLocate }) => {
                     message={
                         <Space>
                             <span>已选择 {selectedRowKeys.length} 台设备</span>
-                            <Button size="small" type="primary" danger onClick={() => message.info('批量删除功能')}>
+                            <Button size="small" type="primary" danger onClick={handleBatchDelete}>
                                 批量删除
                             </Button>
-                            <Button size="small" onClick={() => message.info('批量导出功能')}>
-                                批量导出
-                            </Button>
+                             {/* 扩展点：可添加批量导出等 */}
                             <Button size="small" onClick={() => setSelectedRowKeys([])}>
                                 取消选择
                             </Button>
@@ -341,6 +356,7 @@ const DeviceList = ({ onLocate }) => {
                 scroll={{ x: 1100, y: 'calc(100vh - 280px)' }} // Responsive scroll
                 className="pro-table" // We will style this to be clean
                 style={{ flex: 1 }}
+                locale={{ emptyText: <Empty description="暂无设备数据" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
             />
             <Modal
                 title="导入设备清单 (Excel)"
