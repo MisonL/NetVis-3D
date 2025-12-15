@@ -85,6 +85,7 @@ import AssetInventory from '../Inventory/AssetInventory';
 import OncallManagement from '../Oncall/OncallManagement';
 import DashboardCustomize from '../Dashboard/DashboardCustomize';
 import SystemConfig from '../System/SystemConfig';
+import SecurityCenter from '../Security/SecurityCenter';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -184,6 +185,7 @@ const MainLayout = () => {
       case '39': return <OncallManagement />;
       case '40': return <DashboardCustomize />;
       case '41': return <SystemConfig />;
+      case '42': return <SecurityCenter />;
       default: return <Dashboard />;
     }
   };
