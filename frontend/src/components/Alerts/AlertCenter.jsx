@@ -23,6 +23,7 @@ const AlertCenter = () => {
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [stats, setStats] = useState({ pending: 0, critical: 0, totalToday: 0 });
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
   // 获取告警列表
   const fetchAlerts = useCallback(async (params = {}) => {
@@ -113,6 +114,64 @@ const AlertCenter = () => {
       }
     } catch {
       message.error('操作失败');
+    }
+  };
+
+  // 批量确认告警
+  const handleBatchAcknowledge = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请先选择要确认的告警');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/alerts/batch/ack`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ ids: selectedRowKeys }),
+      });
+      const data = await res.json();
+      if (data.code === 0) {
+        message.success(`已确认 ${selectedRowKeys.length} 条告警`);
+        setSelectedRowKeys([]);
+        fetchAlerts();
+        fetchStats();
+      } else {
+        message.error(data.message);
+      }
+    } catch {
+      message.error('批量确认失败');
+    }
+  };
+
+  // 批量解决告警
+  const handleBatchResolve = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请先选择要解决的告警');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/alerts/batch/resolve`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ ids: selectedRowKeys }),
+      });
+      const data = await res.json();
+      if (data.code === 0) {
+        message.success(`已解决 ${selectedRowKeys.length} 条告警`);
+        setSelectedRowKeys([]);
+        fetchAlerts();
+        fetchStats();
+      } else {
+        message.error(data.message);
+      }
+    } catch {
+      message.error('批量解决失败');
     }
   };
 
@@ -282,14 +341,35 @@ const AlertCenter = () => {
             <BellOutlined style={{ marginRight: 8 }} />
             告警中心
           </Title>
-          <Button icon={<ReloadOutlined />} onClick={() => { fetchAlerts(); fetchStats(); }}>
-            刷新
-          </Button>
+          <Space>
+            {selectedRowKeys.length > 0 && (
+              <>
+                <Button 
+                  type="primary" 
+                  ghost
+                  icon={<CheckCircleOutlined />}
+                  onClick={handleBatchAcknowledge}
+                >
+                  批量确认 ({selectedRowKeys.length})
+                </Button>
+                <Button 
+                  type="primary" 
+                  icon={<CheckCircleOutlined />}
+                  onClick={handleBatchResolve}
+                >
+                  批量解决 ({selectedRowKeys.length})
+                </Button>
+              </>
+            )}
+            <Button icon={<ReloadOutlined />} onClick={() => { fetchAlerts(); fetchStats(); setSelectedRowKeys([]); }}>
+              刷新
+            </Button>
+          </Space>
         </div>
 
         <Tabs 
           activeKey={activeTab} 
-          onChange={(key) => setActiveTab(key)}
+          onChange={(key) => { setActiveTab(key); setSelectedRowKeys([]); }}
           items={tabItems}
         />
 
@@ -298,6 +378,13 @@ const AlertCenter = () => {
           dataSource={alerts}
           rowKey="id"
           loading={loading}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (keys) => setSelectedRowKeys(keys),
+            getCheckboxProps: (record) => ({
+              disabled: record.status === 'resolved', // 已解决的不可选
+            }),
+          }}
           pagination={{
             ...pagination,
             showSizeChanger: true,

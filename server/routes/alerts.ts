@@ -223,6 +223,32 @@ alertRoutes.put('/batch/ack', authMiddleware, zValidator('json', z.object({
   }
 });
 
+// 批量解决告警
+alertRoutes.put('/batch/resolve', authMiddleware, zValidator('json', z.object({
+  ids: z.array(z.string().uuid()),
+})), async (c) => {
+  const { ids } = c.req.valid('json');
+  const currentUser = c.get('user');
+
+  try {
+    for (const id of ids) {
+      await db
+        .update(schema.alerts)
+        .set({
+          status: 'resolved',
+          resolvedBy: currentUser.userId,
+          resolvedAt: new Date(),
+        })
+        .where(eq(schema.alerts.id, id));
+    }
+
+    return c.json({ code: 0, message: `已解决 ${ids.length} 个告警` });
+  } catch (error) {
+    console.error('Batch resolve error:', error);
+    return c.json({ code: 500, message: '批量解决失败' }, 500);
+  }
+});
+
 // ========== 告警规则 ==========
 
 // 获取告警规则列表
