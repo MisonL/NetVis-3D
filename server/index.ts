@@ -52,6 +52,10 @@ import { changeManagementRoutes } from './routes/change-management';
 import { capacityRoutes } from './routes/capacity';
 import { cmdbRoutes } from './routes/cmdb';
 import { incidentRoutes } from './routes/incident';
+import { slaRoutes } from './routes/sla';
+import { ipamRoutes } from './routes/ipam';
+import { portMappingRoutes } from './routes/port-mapping';
+import { firmwareRoutes } from './routes/firmware';
 
 const app = new Hono();
 
@@ -113,6 +117,10 @@ app.route('/api/changes', changeManagementRoutes);
 app.route('/api/capacity', capacityRoutes);
 app.route('/api/cmdb', cmdbRoutes);
 app.route('/api/incidents', incidentRoutes);
+app.route('/api/sla', slaRoutes);
+app.route('/api/ipam', ipamRoutes);
+app.route('/api/port-mapping', portMappingRoutes);
+app.route('/api/firmware', firmwareRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径

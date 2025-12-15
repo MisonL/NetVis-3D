@@ -94,6 +94,10 @@ import ChangeManagement from '../Change/ChangeManagement';
 import CapacityPlanning from '../Capacity/CapacityPlanning';
 import CmdbManagement from '../Cmdb/CmdbManagement';
 import IncidentManagement from '../Incident/IncidentManagement';
+import SlaManagement from '../Sla/SlaManagement';
+import IpamManagement from '../Ipam/IpamManagement';
+import PortVlanManagement from '../Port/PortVlanManagement';
+import FirmwareManagement from '../Firmware/FirmwareManagement';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -202,6 +206,10 @@ const MainLayout = () => {
       case '48': return <CapacityPlanning />;
       case '49': return <CmdbManagement />;
       case '50': return <IncidentManagement />;
+      case '51': return <SlaManagement />;
+      case '52': return <IpamManagement />;
+      case '53': return <PortVlanManagement />;
+      case '54': return <FirmwareManagement />;
       default: return <Dashboard />;
     }
   };
