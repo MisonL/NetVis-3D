@@ -82,6 +82,7 @@ import DataExport from '../Export/DataExport';
 import BigScreen from '../BigScreen/BigScreen';
 import KnowledgeBase from '../Knowledge/KnowledgeBase';
 import AssetInventory from '../Inventory/AssetInventory';
+import OncallManagement from '../Oncall/OncallManagement';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -178,6 +179,7 @@ const MainLayout = () => {
       case '36': return <BigScreen />;
       case '37': return <KnowledgeBase />;
       case '38': return <AssetInventory />;
+      case '39': return <OncallManagement />;
       default: return <Dashboard />;
     }
   };
@@ -320,6 +322,7 @@ const MainLayout = () => {
             hasPermission('admin') && { key: '36', icon: <FundProjectionScreenOutlined />, label: '监控大屏' },
             { key: '37', icon: <BookOutlined />, label: '知识库' },
             hasPermission('admin') && { key: '38', icon: <AuditOutlined />, label: '资产盘点' },
+            hasPermission('admin') && { key: '39', icon: <TeamOutlined />, label: '值班管理' },
             { key: '3', icon: <SettingOutlined />, label: '系统设置' },
           ].filter(Boolean)} 
         />
