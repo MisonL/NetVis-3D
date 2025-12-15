@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Table, Button, Space, Input, Tag, Modal, Form, 
-  Select, message, Popconfirm, Card, Typography, Switch, Empty 
+  Select, message, Popconfirm, Card, Typography, Switch, Empty, Progress 
 } from 'antd';
 import { 
   PlusOutlined, EditOutlined, DeleteOutlined, 
@@ -23,6 +23,28 @@ const UserManagement = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [form] = Form.useForm();
+  const [passwordStrength, setPasswordStrength] = useState({ level: 0, text: '', color: '' });
+
+  // 计算密码强度
+  const getPasswordStrength = (password) => {
+    if (!password) return { level: 0, text: '', color: '' };
+    let strength = 0;
+    if (password.length >= 6) strength += 1;
+    if (password.length >= 8) strength += 1;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 1;
+    if (/\d/.test(password)) strength += 1;
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength += 1;
+    
+    const levels = [
+      { level: 20, text: '非常弱', color: '#ff4d4f' },
+      { level: 40, text: '弱', color: '#faad14' },
+      { level: 60, text: '一般', color: '#d48806' },
+      { level: 80, text: '强', color: '#52c41a' },
+      { level: 100, text: '非常强', color: '#389e0d' },
+    ];
+    const idx = Math.min(strength, 4);
+    return levels[idx];
+  };
 
   // 获取用户列表
   const fetchUsers = async (params = {}) => {
@@ -296,7 +318,20 @@ const UserManagement = () => {
                 { min: 6, message: '密码至少6位' },
               ]}
             >
-              <Input.Password placeholder="请输入密码" />
+              <Input.Password 
+                placeholder="请输入密码" 
+                onChange={(e) => setPasswordStrength(getPasswordStrength(e.target.value))}
+              />
+            </Form.Item>
+          )}
+          {!editingUser && passwordStrength.level > 0 && (
+            <Form.Item label="密码强度" style={{ marginBottom: 8 }}>
+              <Progress 
+                percent={passwordStrength.level} 
+                strokeColor={passwordStrength.color}
+                format={() => passwordStrength.text}
+                size="small"
+              />
             </Form.Item>
           )}
 
