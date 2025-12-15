@@ -59,20 +59,69 @@
   - **背景**：🌌 星空 | 🕸️ 暗色网格 | ☀️ 亮色网格 | ⬛ 纯色（支持自定义）
   - **图标**：💠 拟真 | 🆔 经典（重制 SVG） | 🧊 几何
 
+## 服务端口说明
+
+- **Web 前端 (Prod)**: 21800
+- **Web 前端 (Dev)**: 3000
+- **后端 API**: 21301
+- **Collector Metrics**: 21900
+- **PostgreSQL**: 5432
+- **Redis**: 6379
+
 ## 🚀 快速开始 (Quick Start)
 
+### 🐳 极速部署 (Docker Compose) - 推荐
+
+一切已为您准备就绪。只需一条命令，即可启动整个监控平台。
+
 ```bash
-# 1. 安装依赖
+# 启动所有服务 (Frontend, API, Collector, DB, Cache)
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+```
+
+访问地址：
+
+- **Web 控制台**: http://localhost:21800
+- **API 文档**: http://localhost:21301/api/docs
+
+---
+
+### 🛠️ 手动开发模式 (Local Development)
+
+如果您想参与代码开发：
+
+**1. 启动基础设施**
+
+```bash
+docker-compose up -d postgres redis
+```
+
+**2. 启动后端 (Server)**
+
+```bash
+cd server
+bun install
+bun run dev
+# API 将运行在 http://localhost:21301
+```
+
+**3. 启动前端 (Frontend)**
+
+```bash
+cd frontend
 npm install
-
-# 2. 启动开发服务器
 npm run dev
+# 前端将运行在 http://localhost:3000
+```
 
-# 3. 运行自动化测试
-npm run test:run
+**4. 启动采集器 (Collector)**
 
-# 4. 构建生产版本
-npm run build
+```bash
+cd collector
+go run cmd/main.go
 ```
 
 ## 📁 项目架构 (Architecture)
@@ -149,6 +198,7 @@ collector/               # Go数据采集器 [NEW]
 - **核心框架**: React 18 + Vite 5
 - **UI 组件库**: Ant Design 5 (Glassmorphism Customized)
 - **后端框架**: Bun + Hono + Drizzle ORM
+- **数据采集**: Go 1.21+ (Native Snmp/ICMP)
 - **3D 引擎**: Three.js + React Force Graph 3D
 - **流程图**: React Flow (2D View)
 - **测试框架**: Vitest + React Testing Library (Frontend) / Bun Test (Backend)

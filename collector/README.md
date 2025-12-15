@@ -59,7 +59,7 @@ docker run -d --name collector \
 
 ```yaml
 api:
-  endpoint: "http://api:3001/api" # API服务地址
+  endpoint: "http://api:21301/api" # API服务地址
   token: "your-api-token" # API认证Token
   timeout: 30s
 

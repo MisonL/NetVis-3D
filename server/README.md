@@ -64,5 +64,5 @@ bun run db:migrate
 ```bash
 DATABASE_URL=postgres://netvis:netvis123@localhost:5432/netvis
 JWT_SECRET=your-secret-key
-PORT=3001
+PORT=21301
 ```

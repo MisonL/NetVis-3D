@@ -35,6 +35,16 @@ func main() {
 		logger.WithError(err).Fatal("Failed to load config")
 	}
 
+	// 环境变量覆盖 (简单实现)
+	if envEndpoint := os.Getenv("NETVIS_API_ENDPOINT"); envEndpoint != "" {
+		cfg.API.Endpoint = envEndpoint
+		logger.WithField("endpoint", envEndpoint).Info("Config overwritten by env: NETVIS_API_ENDPOINT")
+	}
+	if envToken := os.Getenv("NETVIS_API_TOKEN"); envToken != "" {
+		cfg.API.Token = envToken
+		logger.Info("Config overwritten by env: NETVIS_API_TOKEN")
+	}
+
 	// 设置日志级别
 	level, err := logrus.ParseLevel(cfg.Logging.Level)
 	if err != nil {
@@ -57,13 +67,33 @@ func main() {
 		logger.WithError(err).Warn("Failed to register collector")
 	}
 
-	// 模拟设备列表 (实际应从API获取)
-	devices := []collector.Device{
-		{ID: "1", IP: "192.168.1.1", Type: "router", Community: "public"},
-		{ID: "2", IP: "192.168.1.2", Type: "switch", Community: "public"},
-		{ID: "3", IP: "192.168.1.10", Type: "server", Community: ""},
+	// 初始获取设备列表
+	logger.Info("Fetching devices from API...")
+	if devices, err := rep.GetDevices(); err != nil {
+		logger.WithError(err).Warn("Failed to fetch initial device list, starting with empty list")
+	} else {
+		logger.WithField("count", len(devices)).Info("Received device list")
+		col.SetDevices(devices)
 	}
-	col.SetDevices(devices)
+
+	// 启动设备列表同步任务
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if devices, err := rep.GetDevices(); err != nil {
+					logger.WithError(err).Error("Failed to sync devices")
+				} else {
+					logger.WithField("count", len(devices)).Debug("Synced device list")
+					col.SetDevices(devices)
+				}
+			}
+		}
+	}()
 
 	// 启动心跳
 	go func() {

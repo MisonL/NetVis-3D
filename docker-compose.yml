@@ -47,10 +47,10 @@ services:
     environment:
       DATABASE_URL: postgres://netvis:netvis123@postgres:5432/netvis
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: netvis-pro-jwt-secret-change-in-production
-      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET:-please_change_this_secret_in_production}
+      PORT: 21301
     ports:
-      - "3001:3001"
+      - "21301:21301"
     depends_on:
       postgres:
         condition: service_healthy
@@ -66,7 +66,21 @@ services:
       dockerfile: Dockerfile
     container_name: netvis-frontend
     ports:
-      - "8080:80"
+      - "21800:80"
+    depends_on:
+      - api
+    networks:
+      - netvis-network
+
+  # 数据采集器
+  collector:
+    build:
+      context: ./collector
+      dockerfile: Dockerfile
+    container_name: netvis-collector
+    environment:
+      - NETVIS_API_ENDPOINT=http://api:21301/api
+      - NETVIS_API_TOKEN=${NETVIS_COLLECTOR_TOKEN:-dev-token}
     depends_on:
       - api
     networks:

@@ -176,8 +176,8 @@ app.notFound((c) => {
 });
 
 export default {
-  port: process.env.PORT || 3001,
+  port: process.env.PORT || 21301,
   fetch: app.fetch,
 };
 
-console.log('🚀 NetVis Pro API Server running on http://localhost:3001');
+console.log('🚀 NetVis Pro API Server running on http://localhost:21301');

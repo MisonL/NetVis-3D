@@ -186,3 +186,42 @@ func (r *Reporter) Heartbeat() error {
 
 	return nil
 }
+
+// GetDevices 从API获取设备列表
+func (r *Reporter) GetDevices() ([]collector.Device, error) {
+	url := fmt.Sprintf("%s/collector/devices", r.config.API.Endpoint)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	if r.config.API.Token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", r.config.API.Token))
+	}
+
+	resp, err := r.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server returned status %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Code    int                `json:"code"`
+		Message string             `json:"message"`
+		Data    []collector.Device `json:"data"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+
+	if result.Code != 0 {
+		return nil, fmt.Errorf("api error: %s", result.Message)
+	}
+
+	return result.Data, nil
+}

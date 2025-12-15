@@ -2,7 +2,7 @@
 
 # API服务器配置
 api:
-  endpoint: "http://localhost:3001/api"
+  endpoint: "http://localhost:21301/api"
   token: ""  # 从服务器获取的API Token
   timeout: 30s
   retryCount: 3
@@ -38,5 +38,5 @@ logging:
 # 指标配置
 metrics:
   enabled: true
-  port: 9100
+  port: 21900
   path: "/metrics"
