@@ -129,12 +129,63 @@ sysConfigRoutes.post('/test-email', authMiddleware, requireRole('admin'), zValid
 })), async (c) => {
   const { to } = c.req.valid('json');
 
-  // 模拟发送测试邮件
-  return c.json({ 
-    code: 0, 
-    message: `测试邮件已发送到 ${to} (模拟)`,
-    data: { success: true }
-  });
+  try {
+    // 获取邮件配置
+    const smtpHost = systemConfigs.get('email_smtp_host');
+    const smtpPort = parseInt(systemConfigs.get('email_smtp_port') || '587');
+    const smtpUser = systemConfigs.get('email_smtp_user');
+    const smtpPass = systemConfigs.get('email_smtp_pass') || '';
+    const emailFrom = systemConfigs.get('email_from');
+
+    if (!smtpHost || !smtpUser) {
+      return c.json({ 
+        code: 400, 
+        message: '请先配置SMTP服务器和用户名',
+        data: { success: false }
+      }, 400);
+    }
+
+    // 使用nodemailer发送真实邮件
+    const nodemailer = await import('nodemailer');
+    
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    });
+
+    await transporter.sendMail({
+      from: emailFrom || smtpUser,
+      to: to,
+      subject: 'NetVis Pro 测试邮件',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2 style="color: #1677ff;">NetVis Pro 邮件配置测试</h2>
+          <p>恭喜！您的邮件服务器配置正确。</p>
+          <p>此邮件由 NetVis Pro 网络管理平台自动发送。</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p style="color: #999; font-size: 12px;">发送时间: ${new Date().toLocaleString('zh-CN')}</p>
+        </div>
+      `,
+    });
+
+    return c.json({ 
+      code: 0, 
+      message: `测试邮件已成功发送到 ${to}`,
+      data: { success: true }
+    });
+  } catch (error) {
+    console.error('Send test email error:', error);
+    return c.json({ 
+      code: 500, 
+      message: `邮件发送失败: ${error instanceof Error ? error.message : '未知错误'}`,
+      data: { success: false }
+    }, 500);
+  }
 });
 
 // 重置配置为默认值
