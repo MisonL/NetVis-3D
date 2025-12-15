@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Row, Col, Statistic, Progress, Typography, Table, Tag, Button, Space, List } from 'antd';
 import { FundOutlined, ReloadOutlined, RiseOutlined, FallOutlined, WarningOutlined, CloudServerOutlined } from '@ant-design/icons';
 
@@ -13,7 +13,7 @@ const CapacityPlanning = () => {
 
   const getToken = () => localStorage.getItem('token');
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
       const [overviewRes, bottlenecksRes, recsRes] = await Promise.all([
@@ -26,9 +26,9 @@ const CapacityPlanning = () => {
       if (bottlenecksData.code === 0) setBottlenecks(bottlenecksData.data || []);
       if (recsData.code === 0) setRecommendations(recsData.data || []);
     } catch { /* ignore */ } finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const getTrendIcon = (trend) => trend === 'increasing' ? <RiseOutlined style={{ color: '#faad14' }} /> : <FallOutlined style={{ color: '#52c41a' }} />;
 

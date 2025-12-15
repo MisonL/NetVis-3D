@@ -146,11 +146,12 @@ collector/               # Go数据采集器 [NEW]
 
 ## 🛠️ 技术栈清单
 
-- **核心框架**: React 18 + Vite 7
-- **UI 组件库**: Ant Design 6 (Dark Theme Algorithm)
+- **核心框架**: React 18 + Vite 5
+- **UI 组件库**: Ant Design 5 (Glassmorphism Customized)
+- **后端框架**: Bun + Hono + Drizzle ORM
 - **3D 引擎**: Three.js + React Force Graph 3D
 - **流程图**: React Flow (2D View)
-- **测试框架**: Vitest + React Testing Library
+- **测试框架**: Vitest + React Testing Library (Frontend) / Bun Test (Backend)
 
 ## 📝 开源协议
 

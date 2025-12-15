@@ -211,7 +211,7 @@ snmpRoutes.delete('/templates/:id', authMiddleware, requireRole('admin'), async 
 
 // 测试SNMP连接
 snmpRoutes.post('/test', authMiddleware, zValidator('json', z.object({
-  ip: z.string().ip(),
+  ip: z.string().regex(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/, "IP格式不正确"),
   version: z.enum(['v1', 'v2c', 'v3']),
   community: z.string().optional(),
   oid: z.string().optional(),

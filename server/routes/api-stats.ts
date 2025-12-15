@@ -5,6 +5,7 @@ import { db, schema } from '../db';
 import { eq, desc, count, sql } from 'drizzle-orm';
 import { authMiddleware, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../middleware/auth';
+import crypto from 'crypto';
 
 const apiStatsRoutes = new Hono<{
   Variables: {
@@ -39,9 +40,9 @@ const generateMockApiCalls = () => {
     const isError = Math.random() < 0.05;
     apiCalls.push({
       id: crypto.randomUUID(),
-      endpoint: endpoints[Math.floor(Math.random() * endpoints.length)],
-      method: methods[Math.floor(Math.random() * (i < 400 ? 2 : 4))],
-      statusCode: isError ? [400, 401, 403, 500][Math.floor(Math.random() * 4)] : 200,
+      endpoint: endpoints[Math.floor(Math.random() * endpoints.length)] || '/api/unknown',
+      method: methods[Math.floor(Math.random() * (i < 400 ? 2 : 4))] || 'GET',
+      statusCode: isError ? ([400, 401, 403, 500][Math.floor(Math.random() * 4)] || 500) : 200,
       responseTime: Math.random() * 200 + 10,
       ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
       userAgent: 'Mozilla/5.0',

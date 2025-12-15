@@ -30,7 +30,7 @@ const exportTasks = new Map<string, {
 exportRoutes.post('/devices', authMiddleware, zValidator('json', z.object({
   format: z.enum(['csv', 'excel', 'json']).default('excel'),
   columns: z.array(z.string()).optional(),
-  filters: z.record(z.any()).optional(),
+  filters: z.record(z.string(), z.any()).optional(),
 })), async (c) => {
   const { format, columns, filters } = c.req.valid('json');
   const currentUser = c.get('user');

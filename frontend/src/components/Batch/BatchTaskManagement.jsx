@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Space, Tag, Typography, Row, Col, Modal, Form, Input, Select, Progress, message, Steps } from 'antd';
 import { ThunderboltOutlined, ReloadOutlined, PlusOutlined, StopOutlined, RedoOutlined, CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 
@@ -14,16 +14,16 @@ const BatchTaskManagement = () => {
 
   const getToken = () => localStorage.getItem('token');
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/batch-tasks`, { headers: { Authorization: `Bearer ${getToken()}` } });
       const data = await res.json();
       if (data.code === 0) setTasks(data.data || []);
     } catch { /* ignore */ } finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetchTasks(); const i = setInterval(fetchTasks, 5000); return () => clearInterval(i); }, []);
+  useEffect(() => { fetchTasks(); const i = setInterval(fetchTasks, 5000); return () => clearInterval(i); }, [fetchTasks]);
 
   const handleCreate = async (values) => {
     try {

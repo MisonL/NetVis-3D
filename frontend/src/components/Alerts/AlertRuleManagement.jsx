@@ -15,7 +15,8 @@ import {
   Typography,
   Row,
   Col,
-  Tooltip
+  Tooltip,
+  Empty 
 } from 'antd';
 import { 
   PlusOutlined, 
@@ -253,6 +254,7 @@ const AlertRuleManagement = () => {
           rowKey="id"
           loading={loading}
           pagination={{ pageSize: 10 }}
+          locale={{ emptyText: <Empty description="暂无告警规则" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
         />
       </Card>
 

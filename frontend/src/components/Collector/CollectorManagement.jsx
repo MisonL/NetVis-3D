@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Card, 
   Table, 
@@ -31,7 +31,7 @@ const CollectorManagement = () => {
 
   const getToken = () => localStorage.getItem('token');
 
-  const fetchCollectors = async () => {
+  const fetchCollectors = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/collector/list`, {
@@ -46,13 +46,13 @@ const CollectorManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCollectors();
     const interval = setInterval(fetchCollectors, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchCollectors]);
 
   const columns = [
     {

@@ -58,7 +58,7 @@ collectorRoutes.post('/register', zValidator('json', registerSchema), async (c) 
       metricsCount: 0,
     });
 
-    console.log(`Collector registered: ${data.id}`);
+    // console.log(`Collector registered: ${data.id}`);
 
     return c.json({
       code: 0,
@@ -155,7 +155,7 @@ collectorRoutes.post('/metrics', zValidator('json', metricsSchema), async (c) =>
       metricsBuffer.splice(0, metricsBuffer.length - 10000);
     }
 
-    console.log(`Received ${data.metrics.length} metrics from ${data.collectorId}`);
+    // console.log(`Received ${data.metrics.length} metrics from ${data.collectorId}`);
 
     return c.json({
       code: 0,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Drawer, Descriptions, Tag, Button, Space, Tabs, Timeline, 
   Statistic, Row, Col, Progress, Card, Typography, Spin, message 
@@ -20,13 +20,7 @@ const DeviceDrawer = ({ visible, deviceId, onClose, onEdit, onDelete }) => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
 
-  useEffect(() => {
-    if (visible && deviceId) {
-      fetchDevice();
-    }
-  }, [visible, deviceId]);
-
-  const fetchDevice = async () => {
+  const fetchDevice = useCallback(async () => {
     if (!deviceId) return;
     
     setLoading(true);
@@ -45,7 +39,13 @@ const DeviceDrawer = ({ visible, deviceId, onClose, onEdit, onDelete }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [deviceId, token]);
+
+  useEffect(() => {
+    if (visible && deviceId) {
+      fetchDevice();
+    }
+  }, [visible, deviceId, fetchDevice]);
 
   const getDeviceIcon = (type) => {
     const icons = {

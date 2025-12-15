@@ -74,6 +74,7 @@ export const I18nProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useI18n = () => {
   const context = useContext(I18nContext);
   if (!context) {

@@ -200,7 +200,7 @@ inventoryRoutes.get('/report', authMiddleware, async (c) => {
       ).map(([type, count]) => ({ type, count })),
       byManufacturer: Object.entries(
         devices.reduce((acc, d) => {
-          acc[d.manufacturer || '未知'] = (acc[d.manufacturer || '未知'] || 0) + 1;
+          acc[d.vendor || '未知'] = (acc[d.vendor || '未知'] || 0) + 1;
           return acc;
         }, {} as Record<string, number>)
       ).map(([manufacturer, count]) => ({ manufacturer, count })),

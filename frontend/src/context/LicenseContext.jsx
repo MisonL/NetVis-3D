@@ -138,6 +138,7 @@ export const LicenseProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useLicense = () => {
   const context = useContext(LicenseContext);
   if (!context) {

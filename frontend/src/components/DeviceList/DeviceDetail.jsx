@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Card, 
   Descriptions, 
@@ -41,7 +41,7 @@ const DeviceDetail = ({ deviceId, onBack }) => {
   const getToken = () => localStorage.getItem('token');
 
   // 获取设备详情
-  const fetchDevice = async () => {
+  const fetchDevice = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/devices/${deviceId}`, {
         headers: { Authorization: `Bearer ${getToken()}` },
@@ -53,13 +53,13 @@ const DeviceDetail = ({ deviceId, onBack }) => {
     } catch {
       message.error('获取设备信息失败');
     }
-  };
+  }, [deviceId]);
 
   // 获取设备指标
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
     setMetricsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/metrics/device/${deviceId}?limit=100`, {
+      const res = await fetch(`${API_BASE}/api/metrics/device/${deviceId}`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       const data = await res.json();
@@ -67,7 +67,7 @@ const DeviceDetail = ({ deviceId, onBack }) => {
         setMetrics(data.data || []);
       }
     } catch {
-      // 使用模拟数据
+      // 模拟数据回退逻辑保持不变
       const mockMetrics = [];
       const now = Date.now();
       for (let i = 99; i >= 0; i--) {
@@ -83,10 +83,10 @@ const DeviceDetail = ({ deviceId, onBack }) => {
     } finally {
       setMetricsLoading(false);
     }
-  };
+  }, [deviceId]);
 
   // 获取接口流量
-  const fetchInterfaces = async () => {
+  const fetchInterfaces = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/metrics/interface/${deviceId}`, {
         headers: { Authorization: `Bearer ${getToken()}` },
@@ -96,14 +96,13 @@ const DeviceDetail = ({ deviceId, onBack }) => {
         setInterfaces(data.data || []);
       }
     } catch {
-      // 使用模拟数据
       setInterfaces([
         { id: '1', interfaceName: 'eth0', inBytes: 1024000, outBytes: 512000, status: 'up' },
         { id: '2', interfaceName: 'eth1', inBytes: 2048000, outBytes: 1024000, status: 'up' },
         { id: '3', interfaceName: 'eth2', inBytes: 0, outBytes: 0, status: 'down' },
       ]);
     }
-  };
+  }, [deviceId]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -112,7 +111,7 @@ const DeviceDetail = ({ deviceId, onBack }) => {
       setLoading(false);
     };
     loadData();
-  }, [deviceId]);
+  }, [fetchDevice, fetchMetrics, fetchInterfaces]);
 
   if (loading) {
     return (

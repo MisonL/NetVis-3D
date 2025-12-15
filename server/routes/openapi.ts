@@ -231,18 +231,58 @@ openApiRoutes.post('/webhooks/:id/test', authMiddleware, requireRole('admin'), a
       return c.json({ code: 404, message: 'Webhook不存在' }, 404);
     }
 
-    // 模拟发送测试请求
+    // 发送测试请求
     const startTime = Date.now();
-    // TODO: 实际发送HTTP请求到webhook.url
-    const responseTime = Date.now() - startTime + Math.floor(Math.random() * 200);
+    
+    let responseData = {
+      success: false,
+      statusCode: 0,
+      responseBody: '',
+    };
+
+    try {
+      const response = await fetch(webhook.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'NetVis-Server/1.0',
+          'X-Webhook-Secret': webhook.secret || '',
+          'X-Webhook-Event': 'ping',
+          'X-Webhook-ID': id,
+        },
+        body: JSON.stringify({
+          id: crypto.randomUUID(),
+          event: 'ping',
+          timestamp: new Date().toISOString(),
+          data: {
+            message: 'This is a test webhook event from NetVis Pro',
+            webhookId: id,
+            webhookName: webhook.name,
+          },
+        }),
+      });
+
+      responseData = {
+        success: response.ok,
+        statusCode: response.status,
+        responseBody: (await response.text()).slice(0, 1000), // Limit body size
+      };
+    } catch (err: any) {
+      responseData = {
+        success: false,
+        statusCode: 0,
+        responseBody: err.message || 'Request failed',
+      };
+    }
+
+    const responseTime = Date.now() - startTime;
 
     return c.json({
       code: 0,
-      message: '测试请求已发送',
+      message: responseData.success ? '测试请求发送成功' : '测试请求发送失败',
       data: {
-        success: true,
+        ...responseData,
         responseTime,
-        statusCode: 200,
       },
     });
   } catch (error) {

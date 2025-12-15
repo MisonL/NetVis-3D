@@ -122,7 +122,7 @@ backupRoutes.post('/create', authMiddleware, requireRole('admin'), zValidator('j
           updatedRecord.completedAt = new Date();
         }
 
-        console.log(`Backup completed: ${id}`);
+        // console.log(`Backup completed: ${id}`);
       } catch (err) {
         const failedRecord = backupRecords.get(id);
         if (failedRecord) {
@@ -201,7 +201,7 @@ backupRoutes.post('/restore/:id', authMiddleware, requireRole('admin'), async (c
     const backupData = JSON.parse(content);
 
     // 这里仅记录恢复操作，实际恢复需要谨慎处理
-    console.log(`Restore requested for backup: ${id}`);
+    // console.log(`Restore requested for backup: ${id}`);
 
     // 审计日志
     await db.insert(schema.auditLogs).values({

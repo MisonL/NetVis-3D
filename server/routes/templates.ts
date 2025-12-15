@@ -162,7 +162,7 @@ templateRoutes.post('/', authMiddleware, requireRole('admin'), zValidator('json'
     
     // 解析变量
     const variableRegex = /\{\{(\w+)\}\}/g;
-    const variables = [...new Set([...(data.content.matchAll(variableRegex) || [])].map(m => m[1]))];
+    const variables = [...new Set([...(data.content.matchAll(variableRegex) || [])].map(m => m[1] || '').filter(Boolean))];
 
     const template = {
       id,
@@ -217,7 +217,7 @@ templateRoutes.put('/:id', authMiddleware, requireRole('admin'), zValidator('jso
     if (data.content) {
       template.content = data.content;
       const variableRegex = /\{\{(\w+)\}\}/g;
-      template.variables = [...new Set([...(data.content.matchAll(variableRegex) || [])].map(m => m[1]))];
+      template.variables = [...new Set([...(data.content.matchAll(variableRegex) || [])].map(m => m[1] || '').filter(Boolean))];
     }
     template.updatedAt = new Date();
 
@@ -263,7 +263,7 @@ templateRoutes.delete('/:id', authMiddleware, requireRole('admin'), async (c) =>
 // 预览模板
 templateRoutes.post('/preview', authMiddleware, zValidator('json', z.object({
   content: z.string(),
-  variables: z.record(z.string()),
+  variables: z.record(z.string(), z.string()),
 })), async (c) => {
   const { content, variables } = c.req.valid('json');
 
@@ -293,7 +293,7 @@ templateRoutes.post('/:id/test', authMiddleware, requireRole('admin'), async (c)
     }
 
     // 模拟发送
-    console.log(`Test sending template: ${template.name}`);
+    // console.log(`Test sending template: ${template.name}`);
 
     return c.json({
       code: 0,

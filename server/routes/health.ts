@@ -17,7 +17,7 @@ healthRoutes.get('/health', async (c) => {
     timestamp: new Date().toISOString(),
     checks: {
       database: dbOk ? 'ok' : 'error',
-      redis: 'ok', // TODO: 实现Redis检查
+      redis: 'disabled', // 当前运行在无Redis模式
     },
   }, statusCode);
 });

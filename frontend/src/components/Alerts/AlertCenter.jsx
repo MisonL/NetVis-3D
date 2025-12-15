@@ -330,7 +330,7 @@ const AlertCenter = () => {
       {/* 告警列表 */}
       <Card
         style={{
-          background: 'var(--glass-card-bg)',
+          background: 'var(--glass-panel-bg)',
           backdropFilter: 'blur(12px)',
           border: '1px solid var(--glass-border)',
           borderRadius: 16,

@@ -233,19 +233,19 @@ deviceHealthRoutes.get('/trend', authMiddleware, async (c) => {
 const getRecommendations = (breakdown: Record<string, number>): string[] => {
   const recommendations: string[] = [];
 
-  if (breakdown.availability < 80) {
+  if ((breakdown.availability || 0) < 80) {
     recommendations.push('建议检查网络连接和设备电源状态');
   }
-  if (breakdown.performance < 70) {
+  if ((breakdown.performance || 0) < 70) {
     recommendations.push('建议优化设备负载，考虑升级硬件配置');
   }
-  if (breakdown.reliability < 80) {
+  if ((breakdown.reliability || 0) < 80) {
     recommendations.push('建议检查设备稳定性，排查重启原因');
   }
-  if (breakdown.security < 80) {
+  if ((breakdown.security || 0) < 80) {
     recommendations.push('建议关注告警信息，及时处理安全事件');
   }
-  if (breakdown.maintenance < 70) {
+  if ((breakdown.maintenance || 0) < 70) {
     recommendations.push('建议定期维护设备，更新固件版本');
   }
 

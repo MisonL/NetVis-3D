@@ -11,15 +11,13 @@ export const deviceApi = {
         return mockDevices.find(d => d.id === id);
     },
     create: async (data) => {
-        console.log('Mock Create:', data);
         return { id: `mock-${Date.now()}`, ...data };
     },
     update: async (id, data) => {
-        console.log('Mock Update:', id, data);
         return { id, ...data };
     },
     delete: async (id) => {
-        console.log('Mock Delete:', id);
+        // console.log('Mock Delete:', id);
         return { success: true };
     }
 };

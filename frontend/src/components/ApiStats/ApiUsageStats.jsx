@@ -35,7 +35,7 @@ const ApiUsageStats = () => {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [activeTab, setActiveTab] = useState('overview');
+
 
   const getToken = () => localStorage.getItem('token');
 

@@ -83,7 +83,7 @@ dashboardRoutes.put('/config', authMiddleware, zValidator('json', z.object({
     y: z.number(),
     w: z.number(),
     h: z.number(),
-    config: z.record(z.unknown()).optional(),
+    config: z.record(z.string(), z.unknown()).optional(),
   })),
   theme: z.string().optional(),
   refreshInterval: z.number().optional(),
@@ -95,7 +95,7 @@ dashboardRoutes.put('/config', authMiddleware, zValidator('json', z.object({
   try {
     userDashboards.set(userId, {
       userId,
-      layout: data.layout,
+      layout: data.layout.map(item => ({ ...item, config: item.config || {} })),
       theme: data.theme || 'default',
       refreshInterval: data.refreshInterval || 30,
       updatedAt: new Date(),
@@ -168,7 +168,7 @@ dashboardRoutes.get('/widget/:id/data', authMiddleware, async (c) => {
         data = (await db.select().from(schema.devices).limit(5)).map(d => ({
           id: d.id,
           name: d.name,
-          ip: d.ip,
+          ip: d.ipAddress,
           status: d.status,
         }));
         break;

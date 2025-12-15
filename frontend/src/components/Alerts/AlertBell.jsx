@@ -70,7 +70,7 @@ const AlertBell = ({ onClick }) => {
   const dropdownContent = (
     <div style={{
       width: 360,
-      background: 'var(--glass-dropdown-bg, rgba(255,255,255,0.95))',
+      background: 'var(--glass-panel-bg)',
       backdropFilter: 'blur(12px)',
       borderRadius: 12,
       boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
