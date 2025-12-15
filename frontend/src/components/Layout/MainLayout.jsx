@@ -106,6 +106,10 @@ import EventBusManagement from '../Event/EventBusManagement';
 import DataCenterManagement from '../DataCenter/DataCenterManagement';
 import AlertChannelManagement from '../AlertChannel/AlertChannelManagement';
 import TopologyExport from '../TopologyExport/TopologyExport';
+import TenantManagement from '../Tenant/TenantManagement';
+import CacheManagement from '../Cache/CacheManagement';
+import NetworkDiagnostics from '../Diagnostics/NetworkDiagnostics';
+import AccessControlManagement from '../Acl/AccessControlManagement';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -226,6 +230,10 @@ const MainLayout = () => {
       case '60': return <DataCenterManagement />;
       case '61': return <AlertChannelManagement />;
       case '62': return <TopologyExport />;
+      case '63': return <TenantManagement />;
+      case '64': return <CacheManagement />;
+      case '65': return <NetworkDiagnostics />;
+      case '66': return <AccessControlManagement />;
       default: return <Dashboard />;
     }
   };

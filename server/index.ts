@@ -64,6 +64,10 @@ import { eventBusRoutes } from './routes/event-bus';
 import { dataCenterRoutes } from './routes/datacenter';
 import { alertChannelRoutes } from './routes/alert-channel';
 import { topologyExportRoutes } from './routes/topology-export';
+import { tenantRoutes } from './routes/tenant';
+import { cacheRoutes } from './routes/cache';
+import { networkDiagnosticsRoutes } from './routes/network-diagnostics';
+import { accessControlRoutes } from './routes/access-control';
 
 const app = new Hono();
 
@@ -137,6 +141,10 @@ app.route('/api/events', eventBusRoutes);
 app.route('/api/datacenters', dataCenterRoutes);
 app.route('/api/alert-channels', alertChannelRoutes);
 app.route('/api/topology-export', topologyExportRoutes);
+app.route('/api/tenants', tenantRoutes);
+app.route('/api/cache', cacheRoutes);
+app.route('/api/diagnostics', networkDiagnosticsRoutes);
+app.route('/api/acl', accessControlRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径
