@@ -1,0 +1,42 @@
+{
+  "name": "@netvis/sdk",
+  "version": "1.0.0",
+  "description": "NetVis Pro API SDK for TypeScript/JavaScript",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup index.ts --format cjs,esm --dts",
+    "dev": "tsup index.ts --format cjs,esm --dts --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "netvis",
+    "network",
+    "monitoring",
+    "sdk",
+    "api"
+  ],
+  "author": "NetVis Team",
+  "license": "MIT",
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MisonL/NetVis-3D.git",
+    "directory": "sdk/typescript"
+  }
+}

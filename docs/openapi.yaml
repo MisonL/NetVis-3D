@@ -1,0 +1,539 @@
+openapi: 3.0.3
+info:
+  title: NetVis Pro API
+  description: |
+    NetVis Pro 网络设备拓扑可视化管理平台 API 文档
+    
+    ## 认证
+    所有 API 请求需要在 Header 中携带 JWT Token:
+    ```
+    Authorization: Bearer <token>
+    ```
+    
+    ## 响应格式
+    ```json
+    {
+      "code": 0,
+      "message": "success",
+      "data": {}
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: NetVis Pro Team
+    email: support@netvis.pro
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:21301/api
+    description: 开发环境
+  - url: https://netvis.example.com/api
+    description: 生产环境
+
+tags:
+  - name: auth
+    description: 认证相关
+  - name: devices
+    description: 设备管理
+  - name: alerts
+    description: 告警管理
+  - name: config
+    description: 配置管理
+  - name: metrics
+    description: 指标数据
+
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: 用户登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  example: admin123
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: 获取当前用户信息
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfo'
+
+  /devices:
+    get:
+      tags: [devices]
+      summary: 获取设备列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [online, offline, warning, error]
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [router, switch, firewall, server]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceListResponse'
+    post:
+      tags: [devices]
+      summary: 创建设备
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDevice'
+      responses:
+        '200':
+          description: 创建成功
+
+  /devices/{id}:
+    get:
+      tags: [devices]
+      summary: 获取设备详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+    put:
+      tags: [devices]
+      summary: 更新设备
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDevice'
+      responses:
+        '200':
+          description: 更新成功
+    delete:
+      tags: [devices]
+      summary: 删除设备
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 删除成功
+
+  /alerts:
+    get:
+      tags: [alerts]
+      summary: 获取告警列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [info, warning, critical]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, acknowledged, resolved]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertListResponse'
+
+  /alerts/{id}/acknowledge:
+    post:
+      tags: [alerts]
+      summary: 确认告警
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 确认成功
+
+  /alerts/{id}/resolve:
+    post:
+      tags: [alerts]
+      summary: 解决告警
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 解决成功
+
+  /config/backups:
+    get:
+      tags: [config]
+      summary: 获取配置备份列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+    post:
+      tags: [config]
+      summary: 创建配置备份
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceId]
+              properties:
+                deviceId:
+                  type: string
+                  format: uuid
+                type:
+                  type: string
+                  enum: [running, startup, full]
+                description:
+                  type: string
+      responses:
+        '200':
+          description: 备份成功
+
+  /config/compare:
+    post:
+      tags: [config]
+      summary: 配置对比
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [backupId1, backupId2]
+              properties:
+                backupId1:
+                  type: string
+                  format: uuid
+                backupId2:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigDiff'
+
+  /metrics/{deviceId}:
+    get:
+      tags: [metrics]
+      summary: 获取设备指标
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [1h, 6h, 24h, 7d, 30d]
+            default: 24h
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceMetrics'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    LoginResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+            user:
+              $ref: '#/components/schemas/UserInfo'
+
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, user, viewer]
+
+    Device:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [router, switch, firewall, server]
+        vendor:
+          type: string
+        model:
+          type: string
+        ipAddress:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, warning, error]
+        lastSeen:
+          type: string
+          format: date-time
+
+    CreateDevice:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        vendor:
+          type: string
+        model:
+          type: string
+        ipAddress:
+          type: string
+        location:
+          type: string
+
+    UpdateDevice:
+      type: object
+      properties:
+        name:
+          type: string
+        vendor:
+          type: string
+        model:
+          type: string
+        ipAddress:
+          type: string
+        location:
+          type: string
+
+    DeviceListResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        data:
+          type: object
+          properties:
+            list:
+              type: array
+              items:
+                $ref: '#/components/schemas/Device'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        deviceId:
+          type: string
+          format: uuid
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        status:
+          type: string
+          enum: [pending, acknowledged, resolved]
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    AlertListResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        data:
+          type: object
+          properties:
+            list:
+              type: array
+              items:
+                $ref: '#/components/schemas/Alert'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    ConfigDiff:
+      type: object
+      properties:
+        added:
+          type: array
+          items:
+            type: string
+        removed:
+          type: array
+          items:
+            type: string
+        modified:
+          type: array
+          items:
+            type: string
+        unchanged:
+          type: integer
+
+    DeviceMetrics:
+      type: object
+      properties:
+        deviceId:
+          type: string
+        cpuUsage:
+          type: number
+        memoryUsage:
+          type: number
+        uptime:
+          type: integer
+        latency:
+          type: number
+        packetLoss:
+          type: number
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
