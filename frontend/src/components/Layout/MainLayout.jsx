@@ -110,6 +110,8 @@ import TenantManagement from '../Tenant/TenantManagement';
 import CacheManagement from '../Cache/CacheManagement';
 import NetworkDiagnostics from '../Diagnostics/NetworkDiagnostics';
 import AccessControlManagement from '../Acl/AccessControlManagement';
+import RateLimitManagement from '../RateLimit/RateLimitManagement';
+import WorkflowManagement from '../Workflow/WorkflowManagement';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -234,6 +236,8 @@ const MainLayout = () => {
       case '64': return <CacheManagement />;
       case '65': return <NetworkDiagnostics />;
       case '66': return <AccessControlManagement />;
+      case '67': return <RateLimitManagement />;
+      case '68': return <WorkflowManagement />;
       default: return <Dashboard />;
     }
   };

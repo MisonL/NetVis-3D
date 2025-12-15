@@ -68,6 +68,8 @@ import { tenantRoutes } from './routes/tenant';
 import { cacheRoutes } from './routes/cache';
 import { networkDiagnosticsRoutes } from './routes/network-diagnostics';
 import { accessControlRoutes } from './routes/access-control';
+import { rateLimitRoutes } from './routes/rate-limit';
+import { workflowRoutes } from './routes/workflow';
 
 const app = new Hono();
 
@@ -145,6 +147,8 @@ app.route('/api/tenants', tenantRoutes);
 app.route('/api/cache', cacheRoutes);
 app.route('/api/diagnostics', networkDiagnosticsRoutes);
 app.route('/api/acl', accessControlRoutes);
+app.route('/api/rate-limit', rateLimitRoutes);
+app.route('/api/workflows', workflowRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径
