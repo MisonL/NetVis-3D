@@ -37,7 +37,6 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const WXWorkIntegration = () => {
   const [form] = Form.useForm();
   const [config, setConfig] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [users, setUsers] = useState([]);
@@ -46,7 +45,6 @@ const WXWorkIntegration = () => {
   const getToken = () => localStorage.getItem('token');
 
   const fetchConfig = async () => {
-    setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/wxwork/config`, {
         headers: { Authorization: `Bearer ${getToken()}` },
@@ -58,8 +56,6 @@ const WXWorkIntegration = () => {
       }
     } catch {
       message.error('获取配置失败');
-    } finally {
-      setLoading(false);
     }
   };
 

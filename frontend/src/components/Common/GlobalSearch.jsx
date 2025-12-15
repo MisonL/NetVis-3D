@@ -56,7 +56,6 @@ const GlobalSearch = ({ visible, onClose, onNavigate }) => {
     }, 300);
 
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyword]);
 
   const getIcon = (type) => {

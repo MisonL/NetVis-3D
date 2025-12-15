@@ -232,19 +232,21 @@ complianceRoutes.get('/violations', authMiddleware, async (c) => {
     for (const device of devices) {
       if (Math.random() > 0.7) {
         const rule = rules[Math.floor(Math.random() * rules.length)];
-        violations.push({
-          id: crypto.randomUUID(),
-          deviceId: device.id,
-          deviceName: device.name,
-          deviceIp: device.ipAddress,
-          ruleId: rule.id,
-          ruleName: rule.name,
-          category: rule.category,
-          severity: rule.severity,
-          description: rule.description,
-          detectedAt: new Date(Date.now() - Math.random() * 86400000),
-          status: Math.random() > 0.5 ? 'open' : 'acknowledged',
-        });
+        if (rule) {
+          violations.push({
+            id: crypto.randomUUID(),
+            deviceId: device.id,
+            deviceName: device.name,
+            deviceIp: device.ipAddress,
+            ruleId: rule.id,
+            ruleName: rule.name,
+            category: rule.category,
+            severity: rule.severity,
+            description: rule.description,
+            detectedAt: new Date(Date.now() - Math.random() * 86400000),
+            status: Math.random() > 0.5 ? 'open' : 'acknowledged',
+          });
+        }
       }
     }
 

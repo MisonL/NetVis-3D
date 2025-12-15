@@ -69,7 +69,6 @@ import { cacheRoutes } from './routes/cache';
 import { networkDiagnosticsRoutes } from './routes/network-diagnostics';
 import { accessControlRoutes } from './routes/access-control';
 import { rateLimitRoutes } from './routes/rate-limit';
-import { workflowRoutes } from './routes/workflow';
 
 const app = new Hono();
 
