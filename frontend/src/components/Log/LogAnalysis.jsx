@@ -23,9 +23,9 @@ const LogAnalysis = () => {
       if (filters.device) params.append('device', filters.device);
       
       const [logsRes, statsRes, devicesRes] = await Promise.all([
-        fetch(`${API_BASE}/api/logs?${params}`, { headers: { Authorization: `Bearer ${getToken()}` } }),
-        fetch(`${API_BASE}/api/logs/stats`, { headers: { Authorization: `Bearer ${getToken()}` } }),
-        fetch(`${API_BASE}/api/logs/devices`, { headers: { Authorization: `Bearer ${getToken()}` } }),
+        fetch(`${API_BASE}/api/log-analysis?${params}`, { headers: { Authorization: `Bearer ${getToken()}` } }),
+        fetch(`${API_BASE}/api/log-analysis/stats`, { headers: { Authorization: `Bearer ${getToken()}` } }),
+        fetch(`${API_BASE}/api/log-analysis/devices`, { headers: { Authorization: `Bearer ${getToken()}` } }),
       ]);
       const [logsData, statsData, devicesData] = await Promise.all([logsRes.json(), statsRes.json(), devicesRes.json()]);
       if (logsData.code === 0) setLogs(logsData.data || []);
@@ -43,7 +43,7 @@ const LogAnalysis = () => {
     if (!query) { fetchAll(); return; }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/logs/search`, {
+      const res = await fetch(`${API_BASE}/api/log-analysis/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ query }),
