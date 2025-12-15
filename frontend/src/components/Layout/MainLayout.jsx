@@ -37,7 +37,8 @@ import {
   CloudDownloadOutlined,
   FundProjectionScreenOutlined,
   BookOutlined,
-  AuditOutlined
+  AuditOutlined,
+  FileSearchOutlined
 } from '@ant-design/icons';
 import { CSSTransition, SwitchTransition } from 'react-transition-group';
 import TopologyCanvas3D from '../Topology/TopologyCanvas3D';
@@ -381,6 +382,35 @@ const MainLayout = () => {
             { key: '37', icon: <BookOutlined />, label: '知识库' },
             hasPermission('admin') && { key: '38', icon: <AuditOutlined />, label: '资产盘点' },
             hasPermission('admin') && { key: '39', icon: <TeamOutlined />, label: '值班管理' },
+            hasPermission('admin') && { key: '40', icon: <DashboardOutlined />, label: '仪表盘配置' },
+            hasPermission('admin') && { key: '41', icon: <SettingOutlined />, label: '系统配置' },
+            hasPermission('admin') && { key: '42', icon: <SafetyCertificateOutlined />, label: '安全中心' },
+            hasPermission('admin') && { key: '43', icon: <LineChartOutlined />, label: '性能监控' },
+            hasPermission('admin') && { key: '44', icon: <RadarChartOutlined />, label: '网络质量' },
+            hasPermission('admin') && { key: '45', icon: <ClusterOutlined />, label: '标签管理' },
+            hasPermission('admin') && { key: '46', icon: <ScheduleOutlined />, label: '批量任务' },
+            hasPermission('admin') && { key: '47', icon: <AuditOutlined />, label: '变更管理' },
+            hasPermission('admin') && { key: '48', icon: <AreaChartOutlined />, label: '容量规划' },
+            hasPermission('admin') && { key: '49', icon: <ClusterOutlined />, label: 'CMDB资产' },
+            hasPermission('admin') && { key: '50', icon: <ThunderboltOutlined />, label: '故障管理' },
+            hasPermission('admin') && { key: '51', icon: <HeartOutlined />, label: 'SLA服务级别' },
+            hasPermission('admin') && { key: '52', icon: <ApiOutlined />, label: 'IP地址管理' },
+            hasPermission('admin') && { key: '53', icon: <BranchesOutlined />, label: '端口VLAN' },
+            hasPermission('admin') && { key: '54', icon: <CloudUploadOutlined />, label: '固件升级' },
+            hasPermission('admin') && { key: '55', icon: <BranchesOutlined />, label: '链路监控' },
+            hasPermission('admin') && { key: '56', icon: <FileTextOutlined />, label: '设备模板' },
+            hasPermission('admin') && { key: '57', icon: <FileSearchOutlined />, label: '日志分析' },
+            hasPermission('admin') && { key: '58', icon: <ToolOutlined />, label: '网络工具' },
+            hasPermission('admin') && { key: '59', icon: <ThunderboltOutlined />, label: '事件总线' },
+            hasPermission('admin') && { key: '60', icon: <ClusterOutlined />, label: '数据中心' },
+            hasPermission('admin') && { key: '61', icon: <MailOutlined />, label: '告警渠道' },
+            hasPermission('admin') && { key: '62', icon: <CloudDownloadOutlined />, label: '拓扑导出' },
+            hasPermission('admin') && { key: '63', icon: <TeamOutlined />, label: '租户管理' },
+            hasPermission('admin') && { key: '64', icon: <CloudServerOutlined />, label: '缓存管理' },
+            hasPermission('admin') && { key: '65', icon: <ToolOutlined />, label: '网络诊断' },
+            hasPermission('admin') && { key: '66', icon: <SafetyCertificateOutlined />, label: '访问控制' },
+            hasPermission('admin') && { key: '67', icon: <ApiOutlined />, label: 'API限流' },
+            hasPermission('admin') && { key: '68', icon: <ApartmentOutlined />, label: '工作流编排' },
             { key: '3', icon: <SettingOutlined />, label: '系统设置' },
           ].filter(Boolean)} 
         />
