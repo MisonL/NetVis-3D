@@ -46,22 +46,16 @@ const GlobalSearch = ({ visible, onClose, onNavigate }) => {
   };
 
   useEffect(() => {
-    if (!keyword.trim()) {
-      return;
-    }
-
+    // 使用setTimeout包裹避免同步setState导致级联渲染
     const timer = setTimeout(() => {
+      if (!keyword.trim()) {
+        setResults([]);
+        return;
+      }
       performSearch(keyword);
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [keyword]);
-  
-  // 当keyword为空时清空results
-  useEffect(() => {
-    if (!keyword.trim()) {
-      setResults([]);
-    }
   }, [keyword]);
 
   const getIcon = (type) => {
