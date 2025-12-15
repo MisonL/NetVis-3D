@@ -137,7 +137,7 @@ sshRoutes.delete('/credentials/:id', authMiddleware, requireRole('admin'), async
   }
 });
 
-// 执行SSH命令（模拟）
+// 执行SSH命令（真实SSH连接）
 sshRoutes.post('/execute', authMiddleware, requireRole('admin'), zValidator('json', z.object({
   deviceId: z.string().uuid(),
   commands: z.array(z.string()),
@@ -153,13 +153,48 @@ sshRoutes.post('/execute', authMiddleware, requireRole('admin'), zValidator('jso
       return c.json({ code: 404, message: '设备不存在' }, 404);
     }
 
-    // 模拟执行命令
-    const results = commands.map(cmd => ({
-      command: cmd,
-      output: `模拟执行命令: ${cmd}\n设备: ${device.name} (${device.ipAddress})\n执行时间: ${new Date().toISOString()}\n\n[模拟输出]\n> ${cmd}\nSuccess`,
-      timestamp: new Date(),
-      success: true,
-    }));
+    if (!device.ipAddress) {
+      return c.json({ code: 400, message: '设备IP地址未配置' }, 400);
+    }
+
+    // 获取凭据
+    let username = 'admin';
+    let password = 'admin';
+    let port = 22;
+
+    if (credentialId && sshCredentials.has(credentialId)) {
+      const cred = sshCredentials.get(credentialId)!;
+      username = cred.username;
+      password = cred.password || '';
+      port = cred.port;
+    }
+
+    // 导入SSH客户端
+    const { executeSSHCommand } = await import('../utils/ssh-client');
+
+    // 执行命令
+    const results = [];
+    for (const cmd of commands) {
+      try {
+        const result = await executeSSHCommand(
+          { host: device.ipAddress, port, username, password },
+          cmd
+        );
+        results.push({
+          command: cmd,
+          output: result.success ? (result.output || '') : (result.error || '未知错误'),
+          timestamp: new Date(),
+          success: result.success,
+        });
+      } catch (err) {
+        results.push({
+          command: cmd,
+          output: `执行失败: ${err instanceof Error ? err.message : '未知错误'}`,
+          timestamp: new Date(),
+          success: false,
+        });
+      }
+    }
 
     // 记录会话
     const sessionId = crypto.randomUUID();
@@ -179,12 +214,12 @@ sshRoutes.post('/execute', authMiddleware, requireRole('admin'), zValidator('jso
       action: 'ssh_execute',
       resource: 'devices',
       resourceId: deviceId,
-      details: JSON.stringify({ commands }),
+      details: JSON.stringify({ commands, results: results.map(r => ({ cmd: r.command, success: r.success })) }),
     });
 
     return c.json({
       code: 0,
-      message: '命令执行成功',
+      message: '命令执行完成',
       data: { sessionId, results },
     });
   } catch (error) {
@@ -243,20 +278,42 @@ sshRoutes.post('/batch-execute', authMiddleware, requireRole('admin'), zValidato
   const currentUser = c.get('user');
 
   try {
+    // 导入SSH客户端
+    const { executeSSHCommand } = await import('../utils/ssh-client');
+
     const results = await Promise.all(
       deviceIds.map(async (deviceId) => {
         const [device] = await db.select().from(schema.devices).where(eq(schema.devices.id, deviceId));
         if (!device) return { deviceId, success: false, error: '设备不存在' };
+        if (!device.ipAddress) return { deviceId, success: false, error: '设备IP未配置' };
+
+        // 执行每条命令
+        const cmdResults = [];
+        for (const cmd of commands) {
+          try {
+            const result = await executeSSHCommand(
+              { host: device.ipAddress, username: 'admin', password: 'admin' },
+              cmd
+            );
+            cmdResults.push({
+              command: cmd,
+              output: result.success ? (result.output || '') : (result.error || '未知错误'),
+              success: result.success,
+            });
+          } catch (err) {
+            cmdResults.push({
+              command: cmd,
+              output: `执行失败: ${err instanceof Error ? err.message : '未知错误'}`,
+              success: false,
+            });
+          }
+        }
 
         return {
           deviceId,
           deviceName: device.name,
-          success: true,
-          results: commands.map(cmd => ({
-            command: cmd,
-            output: `[${device.name}] 模拟执行: ${cmd}`,
-            success: true,
-          })),
+          success: cmdResults.every(r => r.success),
+          results: cmdResults,
         };
       })
     );
