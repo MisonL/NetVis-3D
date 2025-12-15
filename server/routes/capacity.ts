@@ -84,7 +84,7 @@ capacityRoutes.get('/trends', authMiddleware, async (c) => {
       ORDER BY bucket ASC
     `);
 
-    const data = (dataResult.rows || dataResult).map((row: any) => ({
+    const data = ((dataResult as any).rows || dataResult).map((row: any) => ({
       date: new Date(row.bucket).toISOString().split('T')[0],
       avg: Number(row.val || 0),
       max: Number(row.max_val || 0),
@@ -137,7 +137,7 @@ capacityRoutes.get('/forecast', authMiddleware, async (c) => {
       SELECT 
         regr_slope(val, day_epoch) as slope,
         regr_intercept(val, day_epoch) as intercept,
-        regr_count(val, day_epoch) as count
+        count(val) as count
       FROM daily_avg
     `);
 

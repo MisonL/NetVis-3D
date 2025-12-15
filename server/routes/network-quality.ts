@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db, schema } from '../db';
-import { eq, desc, sql, avg } from 'drizzle-orm';
+import { eq, desc, sql, avg, count } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import type { JwtPayload } from '../middleware/auth';
 
@@ -350,14 +350,17 @@ networkQualityRoutes.get('/trends', authMiddleware, async (c) => {
       ORDER BY bucket ASC
     `);
     
-    const latencyData = (historyResult.rows || historyResult).map((row: any) => ({
-        timestamp: new Date(row.bucket),
-        latency: Number(row.latency || 0),
-        jitter: 0,
-        packetLoss: Number(row.loss || 0)
+    const latencyData = ((historyResult as any).rows || historyResult).map((row: any) => ({
+      time: row.bucket,
+      value: Number(row.latency),
     }));
-    
-    const availabilityData = (historyResult.rows || historyResult).map((row: any) => ({
+
+    const lossData = ((historyResult as any).rows || historyResult).map((row: any) => ({
+      time: row.bucket,
+      value: Number(row.loss),
+    }));
+
+    const availabilityData = ((historyResult as any).rows || historyResult).map((row: any) => ({
         hour: new Date(row.bucket).getHours(), // Simplified, actually depends on point
         timestamp: new Date(row.bucket),
         value: Number(row.availability || 100)

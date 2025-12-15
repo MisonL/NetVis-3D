@@ -17,6 +17,7 @@ mock.module('../db', () => ({
     update: () => ({ set: () => ({ where: () => Promise.resolve([]) }) }),
     delete: () => ({ where: () => ({ returning: () => Promise.resolve([{id:'mock-id'}]) }) }),
   },
+  checkDbConnection: () => Promise.resolve(true),
   schema: {
     syslogMessages: { severity: 'severity' },
     interfaceMetrics: { deviceId: 'deviceId' },
@@ -97,7 +98,7 @@ describe('Phase 14 Routes', async () => {
             headers: {'Content-Type': 'application/json'}
         });
         expect(res.status).toBe(200);
-        const body = await res.json();
+        const body = (await res.json()) as any;
         expect(body.code).toBe(0);
     });
 });

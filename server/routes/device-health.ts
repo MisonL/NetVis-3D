@@ -259,7 +259,7 @@ deviceHealthRoutes.get('/trend', authMiddleware, async (c) => {
       ORDER BY bucket ASC
     `);
 
-    const trend = (historyResult.rows || historyResult).map((row: any) => {
+    const trend = ((historyResult as any).rows || historyResult).map((row: any) => {
       const realMetrics = {
         cpuUsage: Number(row.cpu || 0),
         memoryUsage: Number(row.memory || 0),

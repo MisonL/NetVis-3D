@@ -46,7 +46,8 @@ snmpRoutes.get('/templates', authMiddleware, async (c) => {
 snmpRoutes.get('/templates/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
   try {
-    const [template] = await db.select().from(schema.snmpTemplates).where(eq(schema.snmpTemplates.id, id));
+    const result = await db.select().from(schema.snmpTemplates).where(eq(schema.snmpTemplates.id, id));
+    const template = result[0];
     if (!template) return c.json({ code: 404, message: '模板不存在' }, 404);
     return c.json({ code: 0, data: {...template, oids: JSON.parse(template.oids)} });
   } catch (error) { return c.json({ code: 500, message: '获取模板失败' }, 500); }
@@ -67,6 +68,8 @@ snmpRoutes.post('/templates', authMiddleware, requireRole('admin'), zValidator('
         privProtocol: data.privProtocol,
         oids: JSON.stringify(data.oids),
     }).returning();
+
+    if (!template) throw new Error('Failed to create template');
 
     await db.insert(schema.auditLogs).values({
       userId: currentUser.userId, action: 'create', resource: 'snmp_templates', resourceId: template.id, details: JSON.stringify({ name: data.name }),
@@ -126,7 +129,7 @@ snmpRoutes.post('/test', authMiddleware, zValidator('json', z.object({
       
       const result: any = await new Promise((resolve, reject) => {
           const start = Date.now();
-          session.get([oid], (error, varbinds) => {
+          session.get([oid], (error: Error | null, varbinds: any[]) => {
               if (error) {
                   return reject(error);
               }

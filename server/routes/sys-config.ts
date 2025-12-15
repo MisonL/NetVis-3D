@@ -12,37 +12,64 @@ const sysConfigRoutes = new Hono<{
   };
 }>();
 
-// 系统配置存储
-const systemConfigs = new Map<string, string>([
-  ['site_name', 'NetVis Pro'],
-  ['site_logo', '/logo.png'],
-  ['company_name', '网络运维管理平台'],
-  ['login_background', '/login-bg.jpg'],
-  ['primary_color', '#1677ff'],
-  ['session_timeout', '24'],
-  ['password_policy', 'medium'],
-  ['max_login_attempts', '5'],
-  ['two_factor_auth', 'false'],
-  ['auto_logout_minutes', '30'],
-  ['email_smtp_host', ''],
-  ['email_smtp_port', '587'],
-  ['email_smtp_user', ''],
-  ['email_from', ''],
-  ['syslog_enabled', 'false'],
-  ['syslog_server', ''],
-  ['backup_enabled', 'true'],
-  ['backup_retention_days', '30'],
-  ['data_retention_days', '365'],
-]);
+// In-memory cache for configs
+const systemConfigs = new Map<string, string>();
+
+// 默认配置定义
+const DEFAULT_CONFIGS = [
+  { key: 'site_name', value: 'NetVis Pro', category: 'general', description: '系统名称' },
+  { key: 'site_logo', value: '/logo.png', category: 'general', description: '系统Logo' },
+  { key: 'company_name', value: '网络运维管理平台', category: 'general', description: '公司名称' },
+  { key: 'primary_color', value: '#1677ff', category: 'general', description: '主题色' },
+  { key: 'session_timeout', value: '24', category: 'security', description: '会话超时(小时)' },
+  { key: 'password_policy', value: 'medium', category: 'security', description: '密码策略' },
+  { key: 'max_login_attempts', value: '5', category: 'security', description: '最大登录尝试' },
+  { key: 'two_factor_auth', value: 'false', category: 'security', description: '双因素认证' },
+  { key: 'auto_logout_minutes', value: '30', category: 'security', description: '自动登出(分钟)' },
+  { key: 'email_smtp_host', value: '', category: 'email', description: 'SMTP服务器' },
+  { key: 'email_smtp_port', value: '587', category: 'email', description: 'SMTP端口' },
+  { key: 'email_smtp_user', value: '', category: 'email', description: 'SMTP用户名' },
+  { key: 'email_from', value: '', category: 'email', description: '发件人地址' },
+  { key: 'email_smtp_pass', value: '', category: 'email', description: 'SMTP密码' }, // encrypted?
+  { key: 'backup_enabled', value: 'true', category: 'data', description: '自动备份' },
+  { key: 'backup_retention_days', value: '30', category: 'data', description: '备份保留天数' },
+  { key: 'data_retention_days', value: '365', category: 'data', description: '数据保留天数' },
+  // WeChat Configs
+  { key: 'wechat_corp_id', value: '', category: 'wechat', description: '企业ID' },
+  { key: 'wechat_agent_id', value: '', category: 'wechat', description: '应用ID' },
+  { key: 'wechat_secret', value: '', category: 'wechat', description: '应用Secret' },
+  { key: 'wechat_enabled', value: 'false', category: 'wechat', description: '启用企业微信通知' },
+];
+
+// 初始化默认配置
+export async function initSystemSettings() {
+    for (const conf of DEFAULT_CONFIGS) {
+        await db.insert(schema.systemSettings)
+            .values(conf)
+            .onConflictDoNothing()
+            .execute();
+        // Load into memory
+        systemConfigs.set(conf.key, conf.value);
+    }
+    // Reload all from DB to ensure latest
+    const all = await db.select().from(schema.systemSettings);
+    all.forEach(s => systemConfigs.set(s.key, s.value || ''));
+}
 
 // 获取所有配置
 sysConfigRoutes.get('/', authMiddleware, async (c) => {
-  const configs = Object.fromEntries(systemConfigs);
-  return c.json({ code: 0, data: configs });
+  const settings = await db.select().from(schema.systemSettings);
+  const configMap: Record<string, string> = {};
+  settings.forEach(s => {
+      configMap[s.key] = s.value || '';
+      systemConfigs.set(s.key, s.value || ''); // Sync cache
+  });
+  return c.json({ code: 0, data: configMap });
 });
 
 // 获取配置分组
 sysConfigRoutes.get('/groups', authMiddleware, async (c) => {
+  // 定义Schema结构 for Frontend
   const groups = [
     {
       key: 'general',
@@ -72,6 +99,7 @@ sysConfigRoutes.get('/groups', authMiddleware, async (c) => {
         { key: 'email_smtp_port', label: 'SMTP端口', type: 'number' },
         { key: 'email_smtp_user', label: 'SMTP用户名', type: 'input' },
         { key: 'email_from', label: '发件人地址', type: 'input' },
+        { key: 'email_smtp_pass', label: 'SMTP密码', type: 'password' },
       ],
     },
     {
@@ -81,6 +109,16 @@ sysConfigRoutes.get('/groups', authMiddleware, async (c) => {
         { key: 'backup_enabled', label: '自动备份', type: 'switch' },
         { key: 'backup_retention_days', label: '备份保留天数', type: 'number' },
         { key: 'data_retention_days', label: '数据保留天数', type: 'number' },
+      ],
+    },
+    {
+      key: 'wechat',
+      name: '企业微信通知',
+      configs: [
+        { key: 'wechat_enabled', label: '启用企业微信通知', type: 'switch' },
+        { key: 'wechat_corp_id', label: '企业ID (CorpID)', type: 'input' },
+        { key: 'wechat_agent_id', label: '应用ID (AgentID)', type: 'number' },
+        { key: 'wechat_secret', label: '应用Secret', type: 'password' },
       ],
     },
   ];
@@ -95,32 +133,48 @@ sysConfigRoutes.put('/', authMiddleware, requireRole('admin'), zValidator('json'
 
   try {
     for (const [key, value] of Object.entries(data)) {
-      systemConfigs.set(key, String(value));
+        await db.insert(schema.systemSettings)
+            .values({ 
+                key, 
+                value: String(value),
+                updatedBy: currentUser.userId,
+                updatedAt: new Date()
+            })
+            .onConflictDoUpdate({
+                target: schema.systemSettings.key,
+                set: { 
+                    value: String(value),
+                    updatedBy: currentUser.userId,
+                    updatedAt: new Date()
+                }
+            });
     }
 
+    // 审计日志
     await db.insert(schema.auditLogs).values({
       userId: currentUser.userId,
-      action: 'update_system_config',
-      resource: 'system',
-      details: JSON.stringify({ keys: Object.keys(data) }),
+      action: 'update_sys_config',
+      resource: 'system_settings',
+      details: JSON.stringify(Object.keys(data)),
     });
 
     return c.json({ code: 0, message: '配置更新成功' });
   } catch (error) {
-    return c.json({ code: 500, message: '更新失败' }, 500);
+    console.error('Update config error:', error);
+    return c.json({ code: 500, message: '配置更新失败' }, 500);
   }
 });
 
 // 获取单个配置
 sysConfigRoutes.get('/:key', authMiddleware, async (c) => {
   const key = c.req.param('key');
-  const value = systemConfigs.get(key);
+  const setting = await db.select().from(schema.systemSettings).where(eq(schema.systemSettings.key, key)).limit(1);
 
-  if (value === undefined) {
+  if (setting.length === 0) {
     return c.json({ code: 404, message: '配置不存在' }, 404);
   }
 
-  return c.json({ code: 0, data: { key, value } });
+  return c.json({ code: 0, data: { key, value: setting[0]?.value } });
 });
 
 // 测试邮件配置

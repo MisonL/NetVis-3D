@@ -354,18 +354,18 @@ export const complianceResults = pgTable('compliance_results', {
   checkedAt: timestamp('checked_at').notNull().defaultNow(),
 });
 
-// Syslog日志表 (TimescaleDB hypertable candidate)
+// Syslog日志表
 export const syslogMessages = pgTable('syslog_messages', {
   id: uuid('id').primaryKey().defaultRandom(),
   facility: integer('facility'),
-  severity: integer('severity'),
+  severity: integer('severity').notNull(),
   priority: integer('priority'),
-  timestamp: timestamp('timestamp'),
-  hostname: text('hostname'),
+  timestamp: timestamp('timestamp').notNull(),
+  hostname: text('hostname').notNull(),
   appName: text('app_name'),
   procId: text('proc_id'),
   msgId: text('msg_id'),
-  message: text('message'),
+  message: text('message').notNull(),
   raw: text('raw'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
@@ -383,6 +383,16 @@ export const snmpTemplates = pgTable('snmp_templates', {
   oids: text('oids').notNull(), // JSON string of OID definitions
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// 系统设置表 (Key-Value)
+export const systemSettings = pgTable('system_settings', {
+  key: text('key').primaryKey(),
+  value: text('value'),
+  category: text('category').notNull().default('general'), // general, security, email, wechat
+  description: text('description'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  updatedBy: text('updated_by'),
 });
 
 // 类型导出

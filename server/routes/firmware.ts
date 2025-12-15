@@ -94,6 +94,8 @@ firmwareRoutes.post('/jobs', authMiddleware, requireRole('admin'), zValidator('j
       createdBy: currentUser.userId,
     }).returning();
 
+    if (!job) throw new Error('Failed to create job');
+
     // 创建Device Jobs
     for (const devId of deviceIds) {
       await db.insert(schema.upgradeJobDevices).values({

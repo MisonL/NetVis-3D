@@ -101,7 +101,7 @@ logsRoutes.get('/audit', authMiddleware, requireRole('admin'), zValidator('query
     const offset = (page - 1) * pageSize;
     const logs = await db.select().from(schema.auditLogs).limit(pageSize).offset(offset).orderBy(desc(schema.auditLogs.createdAt));
     const total = await db.select({ count: count() }).from(schema.auditLogs);
-    return c.json({ code: 0, data: { list: logs, total: total[0].count, page, pageSize } });
+    return c.json({ code: 0, data: { list: logs, total: total[0]?.count || 0, page, pageSize } });
   } catch(e) { return c.json({code:500}, 500); }
 });
 
@@ -110,9 +110,9 @@ logsRoutes.get('/audit', authMiddleware, requireRole('admin'), zValidator('query
 logsRoutes.get('/stats', authMiddleware, requireRole('admin'), async (c) => {
   try {
     // Count by severity groups
-    const errorCount = (await db.select({ count: count() }).from(schema.syslogMessages).where(lte(schema.syslogMessages.severity, 3)))[0].count;
-    const warnCount = (await db.select({ count: count() }).from(schema.syslogMessages).where(eq(schema.syslogMessages.severity, 4)))[0].count;
-    const infoCount = (await db.select({ count: count() }).from(schema.syslogMessages).where(gte(schema.syslogMessages.severity, 5)))[0].count;
+    const errorCount = (await db.select({ count: count() }).from(schema.syslogMessages).where(lte(schema.syslogMessages.severity, 3)))[0]?.count || 0;
+    const warnCount = (await db.select({ count: count() }).from(schema.syslogMessages).where(eq(schema.syslogMessages.severity, 4)))[0]?.count || 0;
+    const infoCount = (await db.select({ count: count() }).from(schema.syslogMessages).where(gte(schema.syslogMessages.severity, 5)))[0]?.count || 0;
     const total = errorCount + warnCount + infoCount;
 
     // By Source (Top 5)

@@ -15,8 +15,10 @@ const complianceRoutes = new Hono<{
 
 // Initialize Default Rules (Helper)
 async function initDefaultRules() {
-    const rulesCount = await db.select({ count: count() }).from(schema.complianceRules);
-    if (rulesCount[0].count > 0) return;
+    const rulesCountRes = await db.select({ count: count() }).from(schema.complianceRules);
+    if ((rulesCountRes[0]?.count || 0) > 0) return;
+    
+    // ... logic continues
 
     const defaults = [
         { name: 'SSH Weak Password', category: 'security', ruleType: 'must_not_contain', content: 'password 7', severity: 'critical', description: 'Ensure no weak type 7 passwords' },
@@ -149,7 +151,7 @@ async function scanDevices(deviceIds: string[] | undefined, ruleIds: string[] | 
 
                 resultsToInsert.push({
                     deviceId: device.id,
-                    configBackupId: backup.id,
+                    configBackupId: backup?.id,
                     ruleId: rule.id,
                     status: passed ? 'pass' : 'fail',
                     details: passed ? 'Passed' : `Rule violation: ${rule.content}`,

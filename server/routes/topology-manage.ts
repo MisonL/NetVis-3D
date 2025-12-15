@@ -156,7 +156,7 @@ topologyRoutes.post('/connections', authMiddleware, requireRole('admin'), zValid
       userId: currentUser.userId,
       action: 'create',
       resource: 'topology_connections',
-      resourceId: connection.id,
+      resourceId: connection?.id,
       details: JSON.stringify({ source: source.name, target: target.name }),
     });
 

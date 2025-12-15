@@ -3,6 +3,8 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { authRoutes } from './routes/auth';
+import { authMiddleware, requireRole } from './middleware/auth';
+import type { JwtPayload } from './middleware/auth';
 import { userRoutes } from './routes/users';
 import { deviceRoutes } from './routes/devices';
 import { alertRoutes } from './routes/alerts';
@@ -179,8 +181,27 @@ app.notFound((c) => {
   }, 404);
 });
 
+// Phase 15 Services
+import { initSystemSettings } from './routes/sys-config';
+import { alertScheduler } from './services/alert-scheduler';
+
+const port = process.env.PORT || 3001;
+
+// Initialize Services
+(async () => {
+    try {
+        await initSystemSettings();
+        await alertScheduler.start();
+        console.log('[System] Phase 15 Services Initialized (SysConfig, AlertScheduler)');
+    } catch (e) {
+        console.error('Failed to init services:', e);
+    }
+})();
+
+console.log(`🚀 NetVis Pro API Server running on port ${port}`);
+
 export default {
-  port: process.env.PORT || 21301,
+  port: Number(port),
   fetch: app.fetch,
 };
 

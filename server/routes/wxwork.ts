@@ -26,16 +26,23 @@ let wechatConfig = {
 
 // 获取企业微信配置
 wechatRoutes.get('/config', authMiddleware, requireRole('admin'), async (c) => {
-  return c.json({
-    code: 0,
-    data: {
-      corpId: wechatConfig.corpId,
-      agentId: wechatConfig.agentId,
-      enabled: wechatConfig.enabled,
-      webhookUrl: wechatConfig.webhookUrl ? '已配置' : '未配置',
-      hasSecret: !!wechatConfig.secret,
-    },
-  });
+  try {
+    const keys = ['wechat_corp_id', 'wechat_agent_id', 'wechat_secret', 'wechat_enabled', 'wechat_webhook_url'];
+    const settings = await db.select().from(schema.systemSettings).where(desc(schema.systemSettings.key));
+    const configMap: Record<string, string> = {};
+    settings.forEach(s => configMap[s.key] = s.value || '');
+
+    return c.json({
+      code: 0,
+      data: {
+        corpId: configMap['wechat_corp_id'] || '',
+        agentId: configMap['wechat_agent_id'] || '',
+        enabled: configMap['wechat_enabled'] === 'true',
+        webhookUrl: configMap['wechat_webhook_url'] ? '已配置' : '未配置',
+        hasSecret: !!configMap['wechat_secret'],
+      },
+    });
+  } catch(e) { return c.json({code:500, message:'Error'}, 500); }
 });
 
 // 更新企业微信配置
@@ -50,18 +57,25 @@ wechatRoutes.put('/config', authMiddleware, requireRole('admin'), zValidator('js
   const currentUser = c.get('user');
 
   try {
-    if (data.corpId !== undefined) wechatConfig.corpId = data.corpId;
-    if (data.agentId !== undefined) wechatConfig.agentId = data.agentId;
-    if (data.secret !== undefined) wechatConfig.secret = data.secret;
-    if (data.enabled !== undefined) wechatConfig.enabled = data.enabled;
-    if (data.webhookUrl !== undefined) wechatConfig.webhookUrl = data.webhookUrl;
+    const updates: Record<string, string> = {};
+    if (data.corpId !== undefined) updates['wechat_corp_id'] = data.corpId;
+    if (data.agentId !== undefined) updates['wechat_agent_id'] = data.agentId;
+    if (data.secret !== undefined) updates['wechat_secret'] = data.secret;
+    if (data.enabled !== undefined) updates['wechat_enabled'] = String(data.enabled);
+    if (data.webhookUrl !== undefined) updates['wechat_webhook_url'] = data.webhookUrl;
+
+    for (const [key, value] of Object.entries(updates)) {
+        await db.insert(schema.systemSettings)
+            .values({ key, value, category: 'wechat', updatedBy: currentUser.userId })
+            .onConflictDoUpdate({ target: schema.systemSettings.key, set: { value, updatedBy: currentUser.userId, updatedAt: new Date() } });
+    }
 
     // 审计日志
     await db.insert(schema.auditLogs).values({
       userId: currentUser.userId,
       action: 'update_wechat_config',
       resource: 'wechat',
-      details: JSON.stringify({ enabled: wechatConfig.enabled }),
+      details: JSON.stringify({ enabled: data.enabled }),
     });
 
     return c.json({ code: 0, message: '配置更新成功' });

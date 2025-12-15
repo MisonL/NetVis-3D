@@ -15,6 +15,7 @@ mock.module('../db', () => ({
     select: () => ({ ...mockQuery, then: (resolve: any) => resolve([{ count: 0 }]) }), // for count
     insert: () => ({ values: () => ({ returning: () => Promise.resolve([{ id: 'mock-id' }]) }) }),
   },
+  checkDbConnection: () => Promise.resolve(true),
   schema: {
     complianceRules: { category: 'category' },
     complianceResults: { status: 'status' },
@@ -43,11 +44,12 @@ mock.module('../utils/ssh-client', () => ({
 describe('Compliance Routes', async () => {
     const { complianceRoutes } = await import('../routes/compliance');
 
-    it('GET /rules should return rules', async () => {
+    it('GET /rules should return rules list', async () => {
         const res = await complianceRoutes.request('/rules');
         expect(res.status).toBe(200);
-        const body = await res.json();
+        const body = (await res.json()) as any;
         expect(body.code).toBe(0);
+        expect(body.data).toBeArray();
         // Expect defaults to be initialized if count was 0
         // But mock returns count 0, then select returns [].
         // The code awaits initialisation (which inserts defaults), then selects.

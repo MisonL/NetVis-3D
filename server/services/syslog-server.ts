@@ -25,8 +25,8 @@ export class SyslogServer {
         let priority = 13; // default user.notice
         let rest = raw;
         if (priMatch) {
-            priority = parseInt(priMatch[1]);
-            rest = priMatch[2];
+            priority = parseInt(priMatch[1] || '13');
+            rest = priMatch[2] || '';
         }
         const facility = Math.floor(priority / 8);
         const severity = priority % 8;
