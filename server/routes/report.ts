@@ -190,18 +190,58 @@ reportRoutes.post('/generate/alert-summary', authMiddleware, async (c) => {
       byStatus[alert.status] = (byStatus[alert.status] || 0) + 1;
     });
 
-    // 按日期统计（模拟数据）
-    const dailyTrend = [];
+    // 按日期统计（真实数据）
+    const dailyTrendResult = await db.execute(sql`
+      SELECT
+        to_char(created_at, 'YYYY-MM-DD') as date,
+        severity,
+        count(*)::int as count
+      FROM ${schema.alerts}
+      WHERE created_at >= NOW() - INTERVAL '7 days'
+      GROUP BY 1, 2
+      ORDER BY 1
+    `);
+
+    // 初始化过去7天的数据结构
+    const dailyTrendMap = new Map<string, { date: string; critical: number; warning: number; info: number }>();
     for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      dailyTrend.push({
-        date: date.toISOString().split('T')[0],
-        critical: Math.floor(Math.random() * 5),
-        warning: Math.floor(Math.random() * 15),
-        info: Math.floor(Math.random() * 30),
-      });
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0] as string;
+      dailyTrendMap.set(dateStr, { date: dateStr, critical: 0, warning: 0, info: 0 });
     }
+
+    // 填充查询结果
+    // @ts-ignore
+    const rows = dailyTrendResult.rows || dailyTrendResult;
+    rows.forEach((row: any) => {
+      const stats = dailyTrendMap.get(row.date as string);
+      if (stats && row.severity) {
+        (stats as any)[row.severity] = row.count;
+      }
+    });
+
+    const dailyTrend = Array.from(dailyTrendMap.values());
+
+    // TOP告警设备（真实数据）
+    const topDevicesResult = await db.execute(sql`
+      SELECT
+        d.name as device_name,
+        count(*)::int as count
+      FROM ${schema.alerts} a
+      LEFT JOIN ${schema.devices} d ON a.device_id = d.id
+      WHERE a.created_at >= NOW() - INTERVAL '30 days'
+      GROUP BY d.name
+      ORDER BY count DESC
+      LIMIT 10
+    `);
+
+    // @ts-ignore
+    const topDevicesRows = topDevicesResult.rows || topDevicesResult;
+    const topDevices = topDevicesRows.map((row: any) => ({
+      device: row.device_name || 'Unknown',
+      alertCount: row.count,
+    }));
 
     const reportData = {
       title: '告警汇总报表',
@@ -216,11 +256,7 @@ reportRoutes.post('/generate/alert-summary', authMiddleware, async (c) => {
           : 0,
       },
       dailyTrend,
-      topDevices: [
-        { device: 'Core-Router-01', alertCount: 15 },
-        { device: 'Firewall-Main', alertCount: 12 },
-        { device: 'Switch-DC-A', alertCount: 8 },
-      ],
+      topDevices,
     };
 
     if (format === 'xlsx') {
@@ -246,7 +282,7 @@ reportRoutes.post('/generate/alert-summary', authMiddleware, async (c) => {
         ...reportData.summary.bySeverity.map(s => ({ '统计项': s.severity, '数量': s.count })),
         { '统计项': '', '数量': '' },
         { '统计项': '== 按状态 ==', '数量': '' },
-        ...reportData.summary.byStatus.map(s => ({ '统计项': s.status, '数量': s.count })),
+        ...reportData.summary.byStatus.map((s: any) => ({ '统计项': s.status, '数量': s.count })),
       ];
       const summarySheet = XLSX.utils.json_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(workbook, summarySheet, '统计汇总');

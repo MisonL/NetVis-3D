@@ -32,25 +32,44 @@ healthRoutes.get('/health/db', async (c) => {
   }, ok ? 200 : 503);
 });
 
-// Prometheus指标（简化版）
+// Prometheus指标集成
+import * as client from 'prom-client';
+
+// 创建Register
+const register = new client.Registry();
+
+// 添加默认指标 (CPU, Memory, Event Loop等)
+client.collectDefaultMetrics({ register, prefix: 'netvis_' });
+
+// 自定义指标
+const dbStatus = new client.Gauge({
+  name: 'netvis_db_up',
+  help: 'Database connection status (1 = up, 0 = down)',
+  registers: [register],
+});
+
+const activeRequests = new client.Gauge({
+  name: 'netvis_active_requests',
+  help: 'Number of active HTTP requests',
+  registers: [register],
+});
+
 healthRoutes.get('/metrics', async (c) => {
-  const metrics = `
-# HELP netvis_uptime_seconds Server uptime in seconds
-# TYPE netvis_uptime_seconds gauge
-netvis_uptime_seconds ${process.uptime()}
+  try {
+    // 更新DB状态
+    const ok = await checkDbConnection();
+    dbStatus.set(ok ? 1 : 0);
 
-# HELP netvis_requests_total Total number of requests
-# TYPE netvis_requests_total counter
-netvis_requests_total 0
-
-# HELP netvis_memory_usage_bytes Memory usage in bytes
-# TYPE netvis_memory_usage_bytes gauge
-netvis_memory_usage_bytes ${process.memoryUsage().heapUsed}
-`.trim();
-
-  return c.text(metrics, 200, {
-    'Content-Type': 'text/plain; version=0.0.4',
-  });
+    // 获取指标数据
+    const metrics = await register.metrics();
+    
+    return c.text(metrics, 200, {
+      'Content-Type': register.contentType,
+    });
+  } catch (error) {
+    console.error('Metrics generation error:', error);
+    return c.json({ code: 500, message: '指标生成失败' }, 500);
+  }
 });
 
 export { healthRoutes };
