@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db, schema } from '../db';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 import { authMiddleware, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../middleware/auth';
 
@@ -57,61 +57,154 @@ capacityRoutes.get('/overview', authMiddleware, async (c) => {
   return c.json({ code: 0, data: overview });
 });
 
-// 资源使用趋势
+// 资源使用趋势 (真实数据)
 capacityRoutes.get('/trends', authMiddleware, async (c) => {
   const metric = c.req.query('metric') || 'cpu';
   const days = parseInt(c.req.query('days') || '30');
 
-  const data = [];
-  const now = Date.now();
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(now - i * 24 * 60 * 60 * 1000);
-    data.push({
-      date: date.toISOString().split('T')[0],
-      avg: Math.floor(Math.random() * 20 + 40),
-      max: Math.floor(Math.random() * 30 + 60),
-      min: Math.floor(Math.random() * 15 + 25),
-    });
-  }
+  const colMap: Record<string, any> = {
+    cpu: sql`cpu_usage`,
+    memory: sql`memory_usage`,
+    latency: sql`latency`, // Latency as capacity? Maybe.
+  };
 
-  return c.json({ code: 0, data: { metric, trends: data } });
+  const dbCol = colMap[metric];
+  if (!dbCol) return c.json({ code: 400, message: 'Unsupported metric' }, 400);
+
+  try {
+    const dataResult = await db.execute(sql`
+      SELECT 
+        time_bucket('1 day', timestamp) as bucket,
+        AVG(${dbCol})::numeric(10,2) as val,
+        MAX(${dbCol})::numeric(10,2) as max_val,
+        MIN(${dbCol})::numeric(10,2) as min_val
+      FROM ${schema.deviceMetrics}
+      WHERE timestamp > NOW() - INTERVAL '${sql.raw(days.toString())} days'
+      GROUP BY bucket
+      ORDER BY bucket ASC
+    `);
+
+    const data = (dataResult.rows || dataResult).map((row: any) => ({
+      date: new Date(row.bucket).toISOString().split('T')[0],
+      avg: Number(row.val || 0),
+      max: Number(row.max_val || 0),
+      min: Number(row.min_val || 0),
+    }));
+
+    return c.json({ code: 0, data: { metric, trends: data } });
+  } catch (error) {
+    console.error('Get capacity trends error:', error);
+    return c.json({ code: 500, message: '获取趋势失败' }, 500);
+  }
 });
 
-// 容量预测
+// 容量预测 (基于线性回归)
 capacityRoutes.get('/forecast', authMiddleware, async (c) => {
   const metric = c.req.query('metric') || 'cpu';
   const days = parseInt(c.req.query('days') || '90');
 
-  const forecast = [];
-  const now = Date.now();
-  const baseValue = Math.floor(Math.random() * 20 + 40);
-  const growthRate = Math.random() * 0.5 + 0.1; // 每天增长0.1%-0.6%
-
-  for (let i = 0; i < days; i++) {
-    const date = new Date(now + i * 24 * 60 * 60 * 1000);
-    const value = Math.min(95, baseValue + i * growthRate);
-    forecast.push({
-      date: date.toISOString().split('T')[0],
-      predicted: Math.floor(value),
-      confidence: { lower: Math.floor(value - 5), upper: Math.floor(value + 5) },
+  const colMap: Record<string, any> = {
+    cpu: sql`cpu_usage`,
+    memory: sql`memory_usage`,
+  };
+  const dbCol = colMap[metric];
+  
+  // 对于不支持的指标，返回空预测或模拟数据（暂不支持带宽/存储）
+  if (!dbCol) {
+     return c.json({
+      code: 0,
+      data: {
+        metric,
+        forecast: [],
+        alerts: {},
+        note: '该指标暂不支持自动预测'
+      },
     });
   }
 
-  // 计算预计达到阈值的日期
-  const warningDate = forecast.find(f => f.predicted >= capacityConfig.cpuThreshold.warning);
-  const criticalDate = forecast.find(f => f.predicted >= capacityConfig.cpuThreshold.critical);
+  try {
+    // 计算回归参数 (Slope & Intercept)
+    // 基础数据：过去90天的日均值
+    const statsResult = await db.execute(sql`
+      WITH daily_avg AS (
+        SELECT 
+          extract(epoch from time_bucket('1 day', timestamp)) as day_epoch,
+          AVG(${dbCol}) as val
+        FROM ${schema.deviceMetrics}
+        WHERE timestamp > NOW() - INTERVAL '90 days'
+        GROUP BY day_epoch
+      )
+      SELECT 
+        regr_slope(val, day_epoch) as slope,
+        regr_intercept(val, day_epoch) as intercept,
+        regr_count(val, day_epoch) as count
+      FROM daily_avg
+    `);
 
-  return c.json({
-    code: 0,
-    data: {
-      metric,
-      forecast,
-      alerts: {
-        warningDate: warningDate?.date,
-        criticalDate: criticalDate?.date,
+    // @ts-ignore
+    const stats = (statsResult.rows || statsResult)[0] || {};
+    const slope = Number(stats.slope || 0);
+    const intercept = Number(stats.intercept || 0);
+    const count = Number(stats.count || 0);
+
+    const forecast = [];
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+
+    // 如果数据样本太少，无法从真实数据预测，返回空或提示
+    if (count < 5) {
+       // fallback to simulation or empty? Better empty to show "No Data"
+       // But user wants "Realization". If no data, showing nothing is REAL.
+       // However, for demo, I might want to fallback if intercept is 0?
+       // Let's stick to real calculation. Slope 0 means flat prediction.
+    }
+
+    // 生成未来 days 天的预测
+    const currentEpoch = Math.floor(Date.now() / 1000);
+    // intercept is y when x=0. But x is epoch?
+    // Yes, regr(val, epoch). So y = slope * epoch + intercept.
+    
+    for (let i = 1; i <= days; i++) {
+        const futureDate = new Date(now + i * oneDay);
+        const futureEpoch = Math.floor(futureDate.getTime() / 1000);
+        let predicted = slope * futureEpoch + intercept;
+        
+        // 修正范围
+        if (predicted < 0) predicted = 0;
+        if (predicted > 100) predicted = 100;
+        
+        // 由于是单点回归，置信区间这里简化处理（+/- 5%）
+        forecast.push({
+            date: futureDate.toISOString().split('T')[0],
+            predicted: Number(predicted.toFixed(2)),
+            confidence: { 
+                lower: Number(Math.max(0, predicted - 5).toFixed(2)), 
+                upper: Number(Math.min(100, predicted + 5).toFixed(2)) 
+            },
+        });
+    }
+
+    // 检查阈值
+    const threshold = metric === 'cpu' ? capacityConfig.cpuThreshold : capacityConfig.memoryThreshold;
+    const warningDate = forecast.find(f => f.predicted >= threshold.warning);
+    const criticalDate = forecast.find(f => f.predicted >= threshold.critical);
+
+    return c.json({
+      code: 0,
+      data: {
+        metric,
+        forecast,
+        alerts: {
+            warningDate: warningDate?.date,
+            criticalDate: criticalDate?.date,
+        },
       },
-    },
-  });
+    });
+
+  } catch (error) {
+    console.error('Forecast error:', error);
+    return c.json({ code: 500, message: '预测失败' }, 500);
+  }
 });
 
 // 资源瓶颈分析

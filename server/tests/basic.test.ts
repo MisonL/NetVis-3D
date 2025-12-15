@@ -34,6 +34,8 @@ mock.module('../middleware/auth', () => ({
     await next();
   },
   requireRole: () => async (c: any, next: any) => await next(),
+  verifyToken: () => ({ userId: 'admin', role: 'admin' }),
+  generateToken: () => 'mock_token',
 }));
 
 describe('Basic API Routes', async () => {

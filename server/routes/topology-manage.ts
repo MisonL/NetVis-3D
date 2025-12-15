@@ -13,21 +13,7 @@ const topologyRoutes = new Hono<{
 }>();
 
 // 连接关系存储（实际应使用数据库）
-const connections = new Map<string, {
-  id: string;
-  sourceId: string;
-  targetId: string;
-  sourcePort?: string;
-  targetPort?: string;
-  linkType: 'ethernet' | 'fiber' | 'wireless' | 'virtual';
-  bandwidth?: number;
-  status: 'up' | 'down' | 'degraded';
-  latency?: number;
-  utilization?: number;
-  description?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}>();
+// 连接Schema (保持不变)
 
 // 连接Schema
 const connectionSchema = z.object({
@@ -41,17 +27,22 @@ const connectionSchema = z.object({
 });
 
 // 获取所有连接
+// 获取所有连接
 topologyRoutes.get('/connections', authMiddleware, async (c) => {
   const deviceId = c.req.query('deviceId');
 
   try {
-    let result = Array.from(connections.values());
-
+    let query = db.select().from(schema.topologyLinks);
+    
     if (deviceId) {
-      result = result.filter(conn => 
-        conn.sourceId === deviceId || conn.targetId === deviceId
-      );
+      // @ts-ignore
+      query = query.where(or(
+        eq(schema.topologyLinks.sourceId, deviceId),
+        eq(schema.topologyLinks.targetId, deviceId)
+      ));
     }
+
+    const result = await query;
 
     // 获取设备信息
     const devices = await db.select().from(schema.devices);
@@ -74,10 +65,11 @@ topologyRoutes.get('/connections', authMiddleware, async (c) => {
 });
 
 // 获取拓扑图数据（节点和边）
+// 获取拓扑图数据（节点和边）
 topologyRoutes.get('/graph', authMiddleware, async (c) => {
   try {
     const devices = await db.select().from(schema.devices);
-    const allConnections = Array.from(connections.values());
+    const allConnections = await db.select().from(schema.topologyLinks);
 
     const nodes = devices.map(device => ({
       id: device.id,
@@ -88,15 +80,30 @@ topologyRoutes.get('/graph', authMiddleware, async (c) => {
       group: device.groupId,
     }));
 
-    const edges = allConnections.map(conn => ({
-      id: conn.id,
-      source: conn.sourceId,
-      target: conn.targetId,
-      linkType: conn.linkType,
-      status: conn.status,
-      bandwidth: conn.bandwidth,
-      utilization: conn.utilization,
-    }));
+    // 动态判断链路逻辑：如果两端设备有一个Offline，链路视为Down?
+    // 或者直接使用DB中的链路状态。
+    // 为了"高级分析真实化"，我们在这里可以做简单的状态联动：
+    const edges = allConnections.map(conn => {
+        const sourceDev = devices.find(d => d.id === conn.sourceId);
+        const targetDev = devices.find(d => d.id === conn.targetId);
+        
+        let dynamicStatus = conn.status;
+        if (sourceDev?.status === 'offline' || targetDev?.status === 'offline') {
+            dynamicStatus = 'down';
+        }
+
+        return {
+          id: conn.id,
+          source: conn.sourceId,
+          target: conn.targetId,
+          linkType: conn.linkType,
+          status: dynamicStatus,
+          bandwidth: conn.bandwidth,
+          // utilization 暂无真实数据源，沿用null或DB值（如果DB有）
+          // DB schema没有utilization列。
+          utilization: 0, // Placeholder
+        };
+    });
 
     return c.json({
       code: 0,
@@ -118,6 +125,7 @@ topologyRoutes.get('/graph', authMiddleware, async (c) => {
 });
 
 // 创建连接
+// 创建连接
 topologyRoutes.post('/connections', authMiddleware, requireRole('admin'), zValidator('json', connectionSchema), async (c) => {
   const data = c.req.valid('json');
   const currentUser = c.get('user');
@@ -130,33 +138,25 @@ topologyRoutes.post('/connections', authMiddleware, requireRole('admin'), zValid
     if (!source || !target) {
       return c.json({ code: 400, message: '源设备或目标设备不存在' }, 400);
     }
-
-    const id = crypto.randomUUID();
-    
-    const connection = {
-      id,
+ 
+    const [connection] = await db.insert(schema.topologyLinks).values({
       sourceId: data.sourceId,
       targetId: data.targetId,
       sourcePort: data.sourcePort,
       targetPort: data.targetPort,
       linkType: data.linkType,
       bandwidth: data.bandwidth,
-      status: 'up' as const,
-      latency: Math.random() * 10 + 1,
-      utilization: Math.random() * 50,
+      status: 'up',
+      utilization: 0,
       description: data.description,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    connections.set(id, connection);
+    }).returning();
 
     // 审计日志
     await db.insert(schema.auditLogs).values({
       userId: currentUser.userId,
       action: 'create',
       resource: 'topology_connections',
-      resourceId: id,
+      resourceId: connection.id,
       details: JSON.stringify({ source: source.name, target: target.name }),
     });
 
@@ -172,22 +172,23 @@ topologyRoutes.post('/connections', authMiddleware, requireRole('admin'), zValid
 });
 
 // 更新连接
+// 更新连接
 topologyRoutes.put('/connections/:id', authMiddleware, requireRole('admin'), zValidator('json', connectionSchema.partial()), async (c) => {
   const id = c.req.param('id');
   const data = c.req.valid('json');
 
   try {
-    const conn = connections.get(id);
-    if (!conn) {
+    const [updated] = await db.update(schema.topologyLinks)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.topologyLinks.id, id))
+      .returning();
+
+    if (!updated) {
       return c.json({ code: 404, message: '连接不存在' }, 404);
     }
-
-    if (data.sourcePort !== undefined) conn.sourcePort = data.sourcePort;
-    if (data.targetPort !== undefined) conn.targetPort = data.targetPort;
-    if (data.linkType) conn.linkType = data.linkType;
-    if (data.bandwidth !== undefined) conn.bandwidth = data.bandwidth;
-    if (data.description !== undefined) conn.description = data.description;
-    conn.updatedAt = new Date();
 
     return c.json({ code: 0, message: '连接更新成功' });
   } catch (error) {
@@ -197,17 +198,19 @@ topologyRoutes.put('/connections/:id', authMiddleware, requireRole('admin'), zVa
 });
 
 // 删除连接
+// 删除连接
 topologyRoutes.delete('/connections/:id', authMiddleware, requireRole('admin'), async (c) => {
   const id = c.req.param('id');
   const currentUser = c.get('user');
 
   try {
-    const conn = connections.get(id);
-    if (!conn) {
+    const [deleted] = await db.delete(schema.topologyLinks)
+      .where(eq(schema.topologyLinks.id, id))
+      .returning();
+
+    if (!deleted) {
       return c.json({ code: 404, message: '连接不存在' }, 404);
     }
-
-    connections.delete(id);
 
     // 审计日志
     await db.insert(schema.auditLogs).values({
@@ -225,9 +228,10 @@ topologyRoutes.delete('/connections/:id', authMiddleware, requireRole('admin'), 
 });
 
 // 获取连接统计
+// 获取连接统计
 topologyRoutes.get('/stats', authMiddleware, async (c) => {
   try {
-    const allConnections = Array.from(connections.values());
+    const allConnections = await db.select().from(schema.topologyLinks); // 或者使用聚合 count()
 
     const byType = {
       ethernet: allConnections.filter(c => c.linkType === 'ethernet').length,
@@ -258,6 +262,7 @@ topologyRoutes.get('/stats', authMiddleware, async (c) => {
 });
 
 // 自动发现连接（模拟）
+// 自动发现连接（生成演示数据并持久化）
 topologyRoutes.post('/discover', authMiddleware, requireRole('admin'), async (c) => {
   const currentUser = c.get('user');
 
@@ -265,28 +270,37 @@ topologyRoutes.post('/discover', authMiddleware, requireRole('admin'), async (c)
     const devices = await db.select().from(schema.devices);
     let created = 0;
 
-    // 模拟发现连接：为部分设备创建随机连接
+    // 清除旧连接？可选。这里做增量。
+    
+    // 简单逻辑：如果设备尚无连接，随机连接到现有设备
     for (let i = 0; i < Math.min(devices.length - 1, 10); i++) {
-      const source = devices[i];
-      const targetIndex = Math.floor(Math.random() * (devices.length - i - 1)) + i + 1;
-      const target = devices[targetIndex];
+        const source = devices[i];
+        // 50% 概率创建
+        if(Math.random() > 0.5) continue;
 
-      if (source && target) {
-        const id = crypto.randomUUID();
-        connections.set(id, {
-          id,
-          sourceId: source.id,
-          targetId: target.id,
-          linkType: ['ethernet', 'fiber', 'wireless'][Math.floor(Math.random() * 3)] as 'ethernet' | 'fiber' | 'wireless',
-          status: Math.random() > 0.1 ? 'up' : 'down',
-          bandwidth: [100, 1000, 10000][Math.floor(Math.random() * 3)],
-          latency: Math.random() * 20,
-          utilization: Math.random() * 80,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-        created++;
-      }
+        const targetIndex = Math.floor(Math.random() * (devices.length - i - 1)) + i + 1;
+        const target = devices[targetIndex];
+
+        if (source && target) {
+            // 检查是否已存在
+            const existing = await db.select().from(schema.topologyLinks)
+                .where(and(
+                    eq(schema.topologyLinks.sourceId, source.id),
+                    eq(schema.topologyLinks.targetId, target.id)
+                ));
+            
+            if (existing.length === 0) {
+                await db.insert(schema.topologyLinks).values({
+                    sourceId: source.id,
+                    targetId: target.id,
+                    linkType: ['ethernet', 'fiber', 'wireless'][Math.floor(Math.random() * 3)] as any,
+                    status: 'up',
+                    bandwidth: [100, 1000, 10000][Math.floor(Math.random() * 3)],
+                    utilization: Math.floor(Math.random() * 80),
+                });
+                created++;
+            }
+        }
     }
 
     // 审计日志

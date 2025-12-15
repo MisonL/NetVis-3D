@@ -272,6 +272,22 @@ export const interfaceMetrics = pgTable('interface_metrics', {
   timestamp: timestamp('timestamp').notNull().defaultNow(),
 });
 
+// 拓扑连接表
+export const topologyLinks = pgTable('topology_links', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sourceId: uuid('source_id').references(() => devices.id).notNull(),
+  targetId: uuid('target_id').references(() => devices.id).notNull(),
+  sourcePort: text('source_port'),
+  targetPort: text('target_port'),
+  linkType: text('link_type').notNull().default('ethernet'), // ethernet, fiber, wireless, virtual
+  bandwidth: integer('bandwidth'), // Mbps
+  utilization: integer('utilization').default(0), // %
+  status: text('status').notNull().default('up'), // up, down, degraded
+  description: text('description'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 // 类型导出
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -291,3 +307,4 @@ export type Webhook = typeof webhooks.$inferSelect;
 export type Collector = typeof collectors.$inferSelect;
 export type DeviceMetric = typeof deviceMetrics.$inferSelect;
 export type InterfaceMetric = typeof interfaceMetrics.$inferSelect;
+export type TopologyLink = typeof topologyLinks.$inferSelect;

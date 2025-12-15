@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db, schema } from '../db';
-import { eq, desc, count } from 'drizzle-orm';
+import { eq, desc, count, sql } from 'drizzle-orm';
 import { authMiddleware, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../middleware/auth';
 
@@ -101,19 +101,34 @@ deviceHealthRoutes.get('/device/:id', authMiddleware, async (c) => {
       .from(schema.alerts)
       .where(eq(schema.alerts.deviceId, id));
 
-    // 模拟性能指标
-    const mockMetrics = {
-      cpuUsage: Math.random() * 60 + 20,
-      memoryUsage: Math.random() * 40 + 40,
-      latency: Math.random() * 50 + 10,
-      uptimePercent: 95 + Math.random() * 5,
+    // 获取真实性能指标 (过去15分钟平均值)
+    const metricsResult = await db.execute(sql`
+      SELECT 
+        AVG(cpu_usage)::numeric(10,2) as cpu,
+        AVG(memory_usage)::numeric(10,2) as memory,
+        AVG(latency)::numeric(10,2) as latency,
+        (COUNT(*) FILTER (WHERE status = 'online') * 100.0 / NULLIF(COUNT(*), 0))::numeric(10,2) as uptime
+      FROM ${schema.deviceMetrics}
+      WHERE device_id = ${id} 
+        AND timestamp > NOW() - INTERVAL '15 minutes'
+    `);
+
+    // @ts-ignore
+    const m = (metricsResult.rows || metricsResult)[0] || {};
+    
+    // 如果没有数据，使用默认安全值
+    const realMetrics = {
+      cpuUsage: Number(m.cpu || 0),
+      memoryUsage: Number(m.memory || 0),
+      latency: Number(m.latency || 0),
+      uptimePercent: m.uptime !== null ? Number(m.uptime) : 100,
     };
 
     const score = calculateDeviceScore({
       status: device.status || 'online',
       lastSeen: device.updatedAt,
       alertCount: alertResult[0]?.count || 0,
-      ...mockMetrics,
+      ...realMetrics,
     });
 
     return c.json({
@@ -122,7 +137,8 @@ deviceHealthRoutes.get('/device/:id', authMiddleware, async (c) => {
         deviceId: id,
         deviceName: device.name,
         ...score,
-        metrics: mockMetrics,
+        ...score,
+        metrics: realMetrics,
         recommendations: getRecommendations(score.breakdown),
       },
     });
@@ -137,19 +153,43 @@ deviceHealthRoutes.get('/overview', authMiddleware, async (c) => {
   try {
     const devices = await db.select().from(schema.devices);
 
+    // 批量获取真实指标 (Group By 优化)
+    const metricsResult = await db.execute(sql`
+      SELECT 
+        device_id,
+        AVG(cpu_usage)::numeric(10,2) as cpu,
+        AVG(memory_usage)::numeric(10,2) as memory,
+        AVG(latency)::numeric(10,2) as latency,
+        (COUNT(*) FILTER (WHERE status = 'online') * 100.0 / NULLIF(COUNT(*), 0))::numeric(10,2) as uptime
+      FROM ${schema.deviceMetrics}
+      WHERE timestamp > NOW() - INTERVAL '15 minutes'
+      GROUP BY device_id
+    `);
+    
+    const metricsMap = new Map();
+    // @ts-ignore
+    (metricsResult.rows || metricsResult).forEach((row: any) => {
+      metricsMap.set(row.device_id, {
+        cpuUsage: Number(row.cpu || 0),
+        memoryUsage: Number(row.memory || 0),
+        latency: Number(row.latency || 0),
+        uptimePercent: Number(row.uptime || 100),
+      });
+    });
+
     const scores = devices.map(device => {
-      const mockMetrics = {
-        cpuUsage: Math.random() * 60 + 20,
-        memoryUsage: Math.random() * 40 + 40,
-        latency: Math.random() * 50 + 10,
-        uptimePercent: 95 + Math.random() * 5,
+      const realMetrics = metricsMap.get(device.id) || {
+        cpuUsage: 0,
+        memoryUsage: 0,
+        latency: 0,
+        uptimePercent: 100,
       };
 
       const score = calculateDeviceScore({
         status: device.status || 'online',
         lastSeen: device.updatedAt,
-        alertCount: 0,
-        ...mockMetrics,
+        alertCount: 0, // 概览列表暂不统计精确告警数，优化性能
+        ...realMetrics,
       });
 
       return {
@@ -196,25 +236,51 @@ deviceHealthRoutes.get('/overview', authMiddleware, async (c) => {
   }
 });
 
-// 获取健康趋势
+// 获取健康趋势 (真实数据)
 deviceHealthRoutes.get('/trend', authMiddleware, async (c) => {
   const deviceId = c.req.query('deviceId');
   const days = parseInt(c.req.query('days') || '7');
 
-  try {
-    // 模拟趋势数据
-    const trend = [];
-    const now = Date.now();
+  if (!deviceId) return c.json({ code: 400, message: 'Missing deviceId' }, 400);
 
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now - i * 86400000);
-      trend.push({
-        date: date.toISOString().split('T')[0],
-        score: 75 + Math.random() * 20,
-        availability: 90 + Math.random() * 10,
-        performance: 70 + Math.random() * 25,
+  try {
+    // 按天聚合查询指标
+    const historyResult = await db.execute(sql`
+      SELECT 
+        time_bucket('1 day', timestamp) as bucket,
+        AVG(cpu_usage)::numeric(10,2) as cpu,
+        AVG(memory_usage)::numeric(10,2) as memory,
+        AVG(latency)::numeric(10,2) as latency,
+        (COUNT(*) FILTER (WHERE status = 'online') * 100.0 / NULLIF(COUNT(*), 0))::numeric(10,2) as uptime
+      FROM ${schema.deviceMetrics}
+      WHERE device_id = ${deviceId} 
+        AND timestamp > NOW() - INTERVAL '${sql.raw(days.toString())} days'
+      GROUP BY bucket
+      ORDER BY bucket ASC
+    `);
+
+    const trend = (historyResult.rows || historyResult).map((row: any) => {
+      const realMetrics = {
+        cpuUsage: Number(row.cpu || 0),
+        memoryUsage: Number(row.memory || 0),
+        latency: Number(row.latency || 0),
+        uptimePercent: Number(row.uptime || 100),
+      };
+      
+      const score = calculateDeviceScore({
+        status: 'online', // 历史状态无法简单回溯，暂假设online
+        lastSeen: new Date(row.bucket),
+        alertCount: 0, 
+        ...realMetrics,
       });
-    }
+
+      return {
+        date: new Date(row.bucket).toISOString().split('T')[0],
+        score: score.total,
+        availability: score.breakdown.availability,
+        performance: score.breakdown.performance,
+      };
+    });
 
     return c.json({
       code: 0,
@@ -225,6 +291,7 @@ deviceHealthRoutes.get('/trend', authMiddleware, async (c) => {
       },
     });
   } catch (error) {
+    console.error('Get health trend error:', error);
     return c.json({ code: 500, message: '获取趋势失败' }, 500);
   }
 });
@@ -262,44 +329,72 @@ deviceHealthRoutes.post('/batch', authMiddleware, zValidator('json', z.object({
 })), async (c) => {
   const { deviceIds } = c.req.valid('json');
 
+  if (deviceIds.length === 0) return c.json({ code: 0, data: [] });
+
   try {
-    const results = await Promise.all(
-      deviceIds.map(async (id) => {
-        const [device] = await db
-          .select()
-          .from(schema.devices)
-          .where(eq(schema.devices.id, id));
+    // 1. 获取设备基本信息
+    const devices = await db
+      .select()
+      .from(schema.devices)
+      .where(sql`${schema.devices.id} IN ${deviceIds}`);
 
-        if (!device) return null;
+    // 2. 批量获取实时指标
+    // 构建 IN 子句
+    const idsString = deviceIds.map(id => `'${id}'`).join(',');
+    
+    const metricsResult = await db.execute(sql`
+      SELECT 
+        device_id,
+        AVG(cpu_usage)::numeric(10,2) as cpu,
+        AVG(memory_usage)::numeric(10,2) as memory,
+        AVG(latency)::numeric(10,2) as latency,
+        (COUNT(*) FILTER (WHERE status = 'online') * 100.0 / NULLIF(COUNT(*), 0))::numeric(10,2) as uptime
+      FROM ${schema.deviceMetrics}
+      WHERE device_id IN (${sql.raw(idsString)})
+        AND timestamp > NOW() - INTERVAL '15 minutes'
+      GROUP BY device_id
+    `);
 
-        const mockMetrics = {
-          cpuUsage: Math.random() * 60 + 20,
-          memoryUsage: Math.random() * 40 + 40,
-          latency: Math.random() * 50 + 10,
-          uptimePercent: 95 + Math.random() * 5,
-        };
+    const metricsMap = new Map();
+    // @ts-ignore
+    (metricsResult.rows || metricsResult).forEach((row: any) => {
+      metricsMap.set(row.device_id, {
+        cpuUsage: Number(row.cpu || 0),
+        memoryUsage: Number(row.memory || 0),
+        latency: Number(row.latency || 0),
+        uptimePercent: Number(row.uptime || 100),
+      });
+    });
 
-        const score = calculateDeviceScore({
-          status: device.status || 'online',
-          lastSeen: device.updatedAt,
-          alertCount: 0,
-          ...mockMetrics,
-        });
+    const results = devices.map(device => {
+      const realMetrics = metricsMap.get(device.id) || {
+        cpuUsage: 0,
+        memoryUsage: 0,
+        latency: 0,
+        uptimePercent: 100,
+      };
 
-        return {
-          deviceId: id,
-          deviceName: device.name,
-          score: score.total,
-          grade: score.grade,
-        };
-      })
-    );
+      const score = calculateDeviceScore({
+        status: device.status || 'online',
+        lastSeen: device.updatedAt,
+        alertCount: 0,
+        ...realMetrics,
+      });
+
+      return {
+        deviceId: device.id,
+        deviceName: device.name,
+        score: score.total,
+        grade: score.grade,
+      };
+    });
 
     return c.json({
       code: 0,
-      data: results.filter(Boolean),
+      data: results,
     });
   } catch (error) {
+    console.error('Batch health error:', error);
     return c.json({ code: 500, message: '批量获取失败' }, 500);
   }
 });

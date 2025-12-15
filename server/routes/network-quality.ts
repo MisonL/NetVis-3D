@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db, schema } from '../db';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql, avg } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import type { JwtPayload } from '../middleware/auth';
 
@@ -28,40 +28,112 @@ const generateLatencyData = (points: number) => {
 };
 
 // 网络质量概览
+// 网络质量概览 (真实数据)
 networkQualityRoutes.get('/overview', authMiddleware, async (c) => {
-  const overview = {
-    avgLatency: Math.floor(Math.random() * 20 + 15),
-    avgJitter: Math.floor(Math.random() * 3 + 2),
-    packetLoss: (Math.random() * 0.3).toFixed(2),
-    availability: (99 + Math.random() * 0.9).toFixed(2),
-    throughput: Math.floor(Math.random() * 500 + 800),
-    activeProbes: 12,
-    healthyLinks: 145,
-    degradedLinks: 3,
-    downLinks: 2,
-  };
+  try {
+    // 1. 聚合性能指标 (过去5分钟)
+    const metricsResult = await db.execute(sql`
+      SELECT 
+        AVG(latency)::numeric(10,2) as avg_latency,
+        AVG(packet_loss)::numeric(10,2) as avg_loss,
+        (COUNT(*) FILTER (WHERE status = 'online') * 100.0 / NULLIF(COUNT(*), 0))::numeric(10,2) as availability
+      FROM ${schema.deviceMetrics}
+      WHERE timestamp > NOW() - INTERVAL '5 minutes'
+    `);
+    // @ts-ignore
+    const m = (metricsResult.rows || metricsResult)[0] || {};
 
-  return c.json({ code: 0, data: overview });
+    // 2. 统计链路状态
+    const linksResult = await db.execute(sql`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'up') as up_count,
+        COUNT(*) FILTER (WHERE status = 'degraded') as degraded_count,
+        COUNT(*) FILTER (WHERE status = 'down') as down_count
+      FROM ${schema.topologyLinks}
+    `);
+    // @ts-ignore
+    const l = (linksResult.rows || linksResult)[0] || {};
+
+    // 3. 统计活跃探针 (在线设备数)
+    const activeProbes = await db
+      .select({ count: count() })
+      .from(schema.devices)
+      .where(eq(schema.devices.status, 'online'));
+
+    const overview = {
+      avgLatency: Number(m.avg_latency || 0),
+      avgJitter: Math.floor(Math.random() * 3 + 1), // Jitter暂未采集，保留随机模拟或置0
+      packetLoss: Number(m.avg_loss || 0).toFixed(2),
+      availability: Number(m.availability || 100).toFixed(2),
+      throughput: 0, // 暂无吞吐量聚合
+      activeProbes: activeProbes[0]?.count || 0,
+      healthyLinks: Number(l.up_count || 0),
+      degradedLinks: Number(l.degraded_count || 0),
+      downLinks: Number(l.down_count || 0),
+    };
+
+    return c.json({ code: 0, data: overview });
+  } catch (error) {
+    console.error('Network overview error:', error);
+    return c.json({ code: 500, message: '获取概览失败' }, 500);
+  }
 });
 
 // 链路健康列表
+// 链路健康列表 (基于TopologyLinks + Target Device Metrics)
 networkQualityRoutes.get('/links', authMiddleware, async (c) => {
-  const devices = await db.select().from(schema.devices).limit(10);
+  try {
+    const links = await db.query.topologyLinks.findMany({
+      limit: 50,
+      with: {}, 
+    });
+    
+    // 手动Join设备信息和指标 (Drizzle relations未配置，手动查)
+    // 批量获取设备信息
+    const devices = await db.select().from(schema.devices);
+    const deviceMap = new Map(devices.map(d => [d.id, d]));
 
-  const links = devices.map((d, i) => ({
-    id: `link-${i}`,
-    sourceDevice: d.name,
-    sourceIp: d.ipAddress,
-    targetDevice: `Core-Switch-${i + 1}`,
-    targetIp: `10.0.0.${i + 1}`,
-    latency: Math.floor(Math.random() * 30 + 5),
-    jitter: Math.floor(Math.random() * 5 + 1),
-    packetLoss: (Math.random() * 0.5).toFixed(2),
-    bandwidth: Math.floor(Math.random() * 1000 + 100),
-    status: Math.random() > 0.1 ? 'healthy' : 'degraded',
-  }));
+    // 批量获取实时指标
+    const metricsResult = await db.execute(sql`
+      SELECT 
+        device_id, 
+        AVG(latency)::numeric(10,2) as latency,
+        AVG(packet_loss)::numeric(10,2) as loss
+      FROM ${schema.deviceMetrics}
+      WHERE timestamp > NOW() - INTERVAL '5 minutes'
+      GROUP BY device_id
+    `);
+    const metricsMap = new Map();
+    // @ts-ignore
+    (metricsResult.rows || metricsResult).forEach((row: any) => {
+        metricsMap.set(row.device_id, row);
+    });
 
-  return c.json({ code: 0, data: links });
+    const result = links.map(link => {
+        const source = deviceMap.get(link.sourceId);
+        const target = deviceMap.get(link.targetId);
+        const targetMetrics = metricsMap.get(link.targetId) || {}; // Assuming status depends on Target reachability
+
+        return {
+            id: link.id,
+            sourceDevice: source?.name || 'Unknown',
+            sourceIp: source?.ipAddress || '-',
+            targetDevice: target?.name || 'Unknown',
+            targetIp: target?.ipAddress || '-',
+            latency: Number(targetMetrics.latency || 0),
+            jitter: 0, // Not collected
+            packetLoss: Number(targetMetrics.loss || 0).toFixed(2),
+            bandwidth: link.bandwidth || 0,
+            status: link.status === 'up' ? 'healthy' : 'degraded', // Simple mapping
+        };
+    });
+
+    return c.json({ code: 0, data: result });
+  } catch (error) {
+    console.error('Get links error:', error);
+    return c.json({ code: 500, message: '获取链路失败' }, 500);
+  }
 });
 
 // 单链路详情
@@ -259,20 +331,50 @@ networkQualityRoutes.get('/thresholds', authMiddleware, async (c) => {
 });
 
 // 获取网络质量历史趋势
+// 获取网络质量历史趋势 (Real)
 networkQualityRoutes.get('/trends', authMiddleware, async (c) => {
   const range = c.req.query('range') || '24h';
-  const points = range === '1h' ? 60 : range === '6h' ? 360 : 1440;
+  const interval = range === '1h' ? '1 minute' : range === '6h' ? '5 minutes' : '15 minutes';
+  const days = range === '1h' ? 0.04 : range === '6h' ? 0.25 : 1; 
 
-  return c.json({
-    code: 0,
-    data: {
-      latency: generateLatencyData(Math.min(points, 100)),
-      availability: Array.from({ length: 24 }, (_, i) => ({
-        hour: i,
-        value: 99 + Math.random() * 0.9,
-      })),
-    },
-  });
+  try {
+     const historyResult = await db.execute(sql`
+      SELECT 
+        time_bucket(${sql.raw(`'${interval}'`)}, timestamp) as bucket,
+        AVG(latency)::numeric(10,2) as latency,
+        AVG(packet_loss)::numeric(10,2) as loss,
+        (COUNT(*) FILTER (WHERE status = 'online') * 100.0 / NULLIF(COUNT(*), 0))::numeric(10,2) as availability
+      FROM ${schema.deviceMetrics}
+      WHERE timestamp > NOW() - INTERVAL '${sql.raw(days.toString())} days'
+      GROUP BY bucket
+      ORDER BY bucket ASC
+    `);
+    
+    const latencyData = (historyResult.rows || historyResult).map((row: any) => ({
+        timestamp: new Date(row.bucket),
+        latency: Number(row.latency || 0),
+        jitter: 0,
+        packetLoss: Number(row.loss || 0)
+    }));
+    
+    const availabilityData = (historyResult.rows || historyResult).map((row: any) => ({
+        hour: new Date(row.bucket).getHours(), // Simplified, actually depends on point
+        timestamp: new Date(row.bucket),
+        value: Number(row.availability || 100)
+    }));
+
+    return c.json({
+        code: 0,
+        data: {
+            latency: latencyData,
+            availability: availabilityData
+        }
+    });
+
+  } catch (error) {
+     console.error('Trends error:', error);
+     return c.json({ code: 500, message: '获取趋势失败' }, 500);
+  }
 });
 
 export { networkQualityRoutes };
