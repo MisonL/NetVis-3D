@@ -87,6 +87,44 @@ docker-compose ps
 - **Web 控制台**: http://localhost:21800
 - **API 文档**: http://localhost:21301/api/docs
 
+### 🔧 高可用部署 (Production HA)
+
+生产环境推荐使用高可用配置：
+
+```bash
+# 使用高可用配置启动
+docker-compose -f docker-compose.ha.yml up -d
+
+# 执行TimescaleDB迁移
+./scripts/migrate-timescaledb.sh
+
+# 检查集群健康状态
+./scripts/health-check-ha.sh
+```
+
+详细配置请参考 [高可用架构设计](./docs/高可用架构设计.md)
+
+---
+
+## 📦 SDK 支持
+
+提供官方 SDK 用于 API 集成：
+
+| 语言          | 路径              | 文档                                 |
+| ------------- | ----------------- | ------------------------------------ |
+| TypeScript/JS | `sdk/typescript/` | [README](./sdk/typescript/README.md) |
+| Go            | `sdk/go/`         | [README](./sdk/go/README.md)         |
+
+**快速使用示例 (TypeScript):**
+
+```typescript
+import { createClient } from "@netvis/sdk";
+
+const client = createClient({ baseUrl: "http://localhost:21301" });
+await client.login({ username: "admin", password: "xxx" });
+const devices = await client.getDevices();
+```
+
 ---
 
 ### 🛠️ 手动开发模式 (Local Development)
