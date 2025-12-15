@@ -98,6 +98,10 @@ import SlaManagement from '../Sla/SlaManagement';
 import IpamManagement from '../Ipam/IpamManagement';
 import PortVlanManagement from '../Port/PortVlanManagement';
 import FirmwareManagement from '../Firmware/FirmwareManagement';
+import LinkMonitor from '../Link/LinkMonitor';
+import DeviceTemplateManagement from '../Template/DeviceTemplateManagement';
+import LogAnalysis from '../Log/LogAnalysis';
+import NetworkTools from '../Tools/NetworkTools';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -210,6 +214,10 @@ const MainLayout = () => {
       case '52': return <IpamManagement />;
       case '53': return <PortVlanManagement />;
       case '54': return <FirmwareManagement />;
+      case '55': return <LinkMonitor />;
+      case '56': return <DeviceTemplateManagement />;
+      case '57': return <LogAnalysis />;
+      case '58': return <NetworkTools />;
       default: return <Dashboard />;
     }
   };

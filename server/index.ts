@@ -56,6 +56,10 @@ import { slaRoutes } from './routes/sla';
 import { ipamRoutes } from './routes/ipam';
 import { portMappingRoutes } from './routes/port-mapping';
 import { firmwareRoutes } from './routes/firmware';
+import { linkMonitorRoutes } from './routes/link-monitor';
+import { deviceTemplateRoutes } from './routes/device-template';
+import { logAnalysisRoutes } from './routes/log-analysis';
+import { networkToolsRoutes } from './routes/network-tools';
 
 const app = new Hono();
 
@@ -121,6 +125,10 @@ app.route('/api/sla', slaRoutes);
 app.route('/api/ipam', ipamRoutes);
 app.route('/api/port-mapping', portMappingRoutes);
 app.route('/api/firmware', firmwareRoutes);
+app.route('/api/links', linkMonitorRoutes);
+app.route('/api/device-templates', deviceTemplateRoutes);
+app.route('/api/logs', logAnalysisRoutes);
+app.route('/api/network-tools', networkToolsRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径
