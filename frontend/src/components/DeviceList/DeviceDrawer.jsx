@@ -195,6 +195,7 @@ const DeviceDrawer = ({ visible, deviceId, onClose, onEdit, onDelete }) => {
       open={visible}
       onClose={onClose}
       styles={{
+        mask: { backdropFilter: 'blur(4px)' },
         body: { padding: 0 },
       }}
     >

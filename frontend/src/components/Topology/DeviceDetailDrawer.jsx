@@ -17,7 +17,10 @@ const DeviceDetailDrawer = ({ open, onClose, device }) => {
             onClose={onClose}
             open={open}
 
-            styles={{ wrapper: { width: 420 }, mask: { background: 'transparent' } }}
+            styles={{ 
+              wrapper: { width: 420 }, 
+              mask: { background: 'transparent' }
+            }}
             mask={false}
             extra={
               <Button type="text" icon={<CloseOutlined style={{ color: 'var(--text-secondary)' }} />} onClick={onClose} />
