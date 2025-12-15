@@ -1,0 +1,294 @@
+version: '3.8'
+
+# NetVis Pro 高可用部署配置
+# 使用方法: docker compose -f docker-compose.ha.yml up -d
+
+services:
+  # PostgreSQL 主库
+  postgres-primary:
+    image: postgres:15-alpine
+    container_name: netvis-pg-primary
+    restart: always
+    environment:
+      POSTGRES_USER: netvis
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-netvis_secure_2024}
+      POSTGRES_DB: netvis
+    volumes:
+      - pg_primary_data:/var/lib/postgresql/data
+      - ./config/postgres/primary.conf:/etc/postgresql/conf.d/primary.conf:ro
+    command: >
+      postgres
+      -c wal_level=replica
+      -c max_wal_senders=3
+      -c wal_keep_size=1GB
+      -c synchronous_commit=on
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netvis -d netvis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - netvis-ha
+
+  # PostgreSQL 从库
+  postgres-replica:
+    image: postgres:15-alpine
+    container_name: netvis-pg-replica
+    restart: always
+    environment:
+      POSTGRES_USER: netvis
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-netvis_secure_2024}
+      POSTGRES_DB: netvis
+      PGUSER: netvis
+      PGPASSWORD: ${PG_PASSWORD:-netvis_secure_2024}
+    volumes:
+      - pg_replica_data:/var/lib/postgresql/data
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    entrypoint: |
+      bash -c '
+        until pg_isready -h postgres-primary -U netvis; do sleep 1; done
+        if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
+          pg_basebackup -h postgres-primary -U netvis -D /var/lib/postgresql/data -Fp -Xs -P -R
+        fi
+        exec postgres
+      '
+    networks:
+      - netvis-ha
+
+  # Redis 主节点
+  redis-master:
+    image: redis:7-alpine
+    container_name: netvis-redis-master
+    restart: always
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-redis_secure_2024}
+      --appendonly yes
+      --appendfsync everysec
+    volumes:
+      - redis_master_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secure_2024}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - netvis-ha
+
+  # Redis 从节点
+  redis-replica:
+    image: redis:7-alpine
+    container_name: netvis-redis-replica
+    restart: always
+    command: >
+      redis-server
+      --replicaof redis-master 6379
+      --masterauth ${REDIS_PASSWORD:-redis_secure_2024}
+      --requirepass ${REDIS_PASSWORD:-redis_secure_2024}
+      --appendonly yes
+    volumes:
+      - redis_replica_data:/data
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    networks:
+      - netvis-ha
+
+  # Redis Sentinel 1
+  redis-sentinel-1:
+    image: redis:7-alpine
+    container_name: netvis-sentinel-1
+    restart: always
+    entrypoint: |
+      sh -c '
+        cat > /etc/redis/sentinel.conf << EOF
+        port 26379
+        sentinel monitor netvis-master redis-master 6379 2
+        sentinel auth-pass netvis-master ${REDIS_PASSWORD:-redis_secure_2024}
+        sentinel down-after-milliseconds netvis-master 5000
+        sentinel failover-timeout netvis-master 60000
+        sentinel parallel-syncs netvis-master 1
+        EOF
+        redis-sentinel /etc/redis/sentinel.conf
+      '
+    depends_on:
+      - redis-master
+      - redis-replica
+    networks:
+      - netvis-ha
+
+  # Redis Sentinel 2
+  redis-sentinel-2:
+    image: redis:7-alpine
+    container_name: netvis-sentinel-2
+    restart: always
+    entrypoint: |
+      sh -c '
+        cat > /etc/redis/sentinel.conf << EOF
+        port 26379
+        sentinel monitor netvis-master redis-master 6379 2
+        sentinel auth-pass netvis-master ${REDIS_PASSWORD:-redis_secure_2024}
+        sentinel down-after-milliseconds netvis-master 5000
+        sentinel failover-timeout netvis-master 60000
+        sentinel parallel-syncs netvis-master 1
+        EOF
+        redis-sentinel /etc/redis/sentinel.conf
+      '
+    depends_on:
+      - redis-master
+      - redis-replica
+    networks:
+      - netvis-ha
+
+  # Redis Sentinel 3
+  redis-sentinel-3:
+    image: redis:7-alpine
+    container_name: netvis-sentinel-3
+    restart: always
+    entrypoint: |
+      sh -c '
+        cat > /etc/redis/sentinel.conf << EOF
+        port 26379
+        sentinel monitor netvis-master redis-master 6379 2
+        sentinel auth-pass netvis-master ${REDIS_PASSWORD:-redis_secure_2024}
+        sentinel down-after-milliseconds netvis-master 5000
+        sentinel failover-timeout netvis-master 60000
+        sentinel parallel-syncs netvis-master 1
+        EOF
+        redis-sentinel /etc/redis/sentinel.conf
+      '
+    depends_on:
+      - redis-master
+      - redis-replica
+    networks:
+      - netvis-ha
+
+  # API Server 1
+  api-1:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: netvis-api-1
+    restart: always
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://netvis:${PG_PASSWORD:-netvis_secure_2024}@postgres-primary:5432/netvis
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_secure_2024}@redis-master:6379
+      - JWT_SECRET=${JWT_SECRET:-please_change_this_secret_in_production}
+      - NODE_ENV=production
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - netvis-ha
+
+  # API Server 2
+  api-2:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: netvis-api-2
+    restart: always
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://netvis:${PG_PASSWORD:-netvis_secure_2024}@postgres-primary:5432/netvis
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_secure_2024}@redis-master:6379
+      - JWT_SECRET=${JWT_SECRET:-please_change_this_secret_in_production}
+      - NODE_ENV=production
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - netvis-ha
+
+  # Frontend 1
+  frontend-1:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: netvis-frontend-1
+    restart: always
+    networks:
+      - netvis-ha
+
+  # Frontend 2
+  frontend-2:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: netvis-frontend-2
+    restart: always
+    networks:
+      - netvis-ha
+
+  # Nginx 负载均衡
+  nginx:
+    image: nginx:alpine
+    container_name: netvis-lb
+    restart: always
+    ports:
+      - "21800:80"
+      - "21443:443"
+    volumes:
+      - ./config/nginx/ha.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api-1
+      - api-2
+      - frontend-1
+      - frontend-2
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - netvis-ha
+
+  # Collector 采集器
+  collector:
+    build:
+      context: ./collector
+      dockerfile: Dockerfile
+    container_name: netvis-collector
+    restart: always
+    environment:
+      - NETVIS_API_ENDPOINT=http://nginx:80/api
+      - NETVIS_COLLECTOR_TOKEN=${COLLECTOR_TOKEN:-collector_token_2024}
+    volumes:
+      - ./collector/config.yaml:/app/config.yaml:ro
+    depends_on:
+      - nginx
+    networks:
+      - netvis-ha
+
+volumes:
+  pg_primary_data:
+    name: netvis_pg_primary_data
+  pg_replica_data:
+    name: netvis_pg_replica_data
+  redis_master_data:
+    name: netvis_redis_master_data
+  redis_replica_data:
+    name: netvis_redis_replica_data
+
+networks:
+  netvis-ha:
+    name: netvis-ha-network
+    driver: bridge
