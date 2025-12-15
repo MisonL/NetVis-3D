@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-ping/ping"
+	"github.com/gosnmp/gosnmp"
 	"github.com/netvis/collector/internal/config"
 	"github.com/sirupsen/logrus"
 )
@@ -175,8 +177,30 @@ func (c *Collector) collectDevice(device Device) DeviceMetrics {
 
 // pingDevice 执行Ping检测
 func (c *Collector) pingDevice(ip string) (latency float64, packetLoss float64, err error) {
-	// 简化实现 - 实际应使用 go-ping 库
-	return 10.5, 0, nil
+	pinger, err := ping.NewPinger(ip)
+	if err != nil {
+		return 0, 100, err
+	}
+
+	// 配置Ping参数
+	pinger.Count = 3
+	pinger.Timeout = time.Second * 5
+	pinger.SetPrivileged(false) // 非特权模式，使用UDP
+
+	err = pinger.Run()
+	if err != nil {
+		return 0, 100, err
+	}
+
+	stats := pinger.Statistics()
+
+	// 计算平均延迟(毫秒)
+	latency = float64(stats.AvgRtt.Microseconds()) / 1000.0
+
+	// 计算丢包率(百分比)
+	packetLoss = stats.PacketLoss
+
+	return latency, packetLoss, nil
 }
 
 // SNMPMetrics SNMP采集结果
@@ -187,16 +211,136 @@ type SNMPMetrics struct {
 	Interfaces  []IfStats
 }
 
+// SNMP OID 常量
+const (
+	// 系统信息
+	oidSysUpTime = ".1.3.6.1.2.1.1.3.0" // sysUpTimeInstance (timeticks)
+
+	// 接口表
+	oidIfDescr      = ".1.3.6.1.2.1.2.2.1.2"  // ifDescr
+	oidIfInOctets   = ".1.3.6.1.2.1.2.2.1.10" // ifInOctets
+	oidIfOutOctets  = ".1.3.6.1.2.1.2.2.1.16" // ifOutOctets
+	oidIfInErrors   = ".1.3.6.1.2.1.2.2.1.14" // ifInErrors
+	oidIfOutErrors  = ".1.3.6.1.2.1.2.2.1.20" // ifOutErrors
+	oidIfOperStatus = ".1.3.6.1.2.1.2.2.1.8"  // ifOperStatus
+
+	// 主机资源 (HOST-RESOURCES-MIB)
+	oidHrProcessorLoad = ".1.3.6.1.2.1.25.3.3.1.2" // hrProcessorLoad
+	oidHrStorageUsed   = ".1.3.6.1.2.1.25.2.3.1.6" // hrStorageUsed
+	oidHrStorageSize   = ".1.3.6.1.2.1.25.2.3.1.5" // hrStorageSize
+)
+
 // collectSNMP 执行SNMP采集
 func (c *Collector) collectSNMP(device Device) (*SNMPMetrics, error) {
-	// 简化实现 - 实际应使用 gosnmp 库
-	return &SNMPMetrics{
-		CPUUsage:    25.5,
-		MemoryUsage: 60.2,
-		Uptime:      86400,
-		Interfaces: []IfStats{
-			{Name: "eth0", InBytes: 1024000, OutBytes: 512000, Status: "up"},
-			{Name: "eth1", InBytes: 2048000, OutBytes: 1024000, Status: "up"},
-		},
-	}, nil
+	// 创建SNMP客户端
+	snmp := &gosnmp.GoSNMP{
+		Target:    device.IP,
+		Port:      161,
+		Community: device.Community,
+		Version:   gosnmp.Version2c,
+		Timeout:   time.Duration(5) * time.Second,
+		Retries:   2,
+	}
+
+	err := snmp.Connect()
+	if err != nil {
+		return nil, err
+	}
+	defer snmp.Conn.Close()
+
+	metrics := &SNMPMetrics{}
+
+	// 获取系统运行时间
+	result, err := snmp.Get([]string{oidSysUpTime})
+	if err == nil && len(result.Variables) > 0 {
+		if uptime, ok := result.Variables[0].Value.(uint32); ok {
+			metrics.Uptime = int64(uptime) / 100 // timeticks to seconds
+		}
+	}
+
+	// 获取CPU使用率 (平均所有处理器)
+	cpuResult, err := snmp.WalkAll(oidHrProcessorLoad)
+	if err == nil && len(cpuResult) > 0 {
+		var totalCPU float64
+		for _, pdu := range cpuResult {
+			if val, ok := pdu.Value.(int); ok {
+				totalCPU += float64(val)
+			}
+		}
+		metrics.CPUUsage = totalCPU / float64(len(cpuResult))
+	}
+
+	// 获取内存使用率 (简化: 取第一个存储设备)
+	usedResult, _ := snmp.WalkAll(oidHrStorageUsed)
+	sizeResult, _ := snmp.WalkAll(oidHrStorageSize)
+	if len(usedResult) > 0 && len(sizeResult) > 0 {
+		if used, ok := usedResult[0].Value.(int); ok {
+			if size, ok := sizeResult[0].Value.(int); ok {
+				if size > 0 {
+					metrics.MemoryUsage = float64(used) / float64(size) * 100
+				}
+			}
+		}
+	}
+
+	// 获取接口信息
+	interfaces := c.collectInterfaces(snmp)
+	metrics.Interfaces = interfaces
+
+	return metrics, nil
+}
+
+// collectInterfaces 采集接口统计
+func (c *Collector) collectInterfaces(snmp *gosnmp.GoSNMP) []IfStats {
+	var interfaces []IfStats
+
+	// 获取接口名称
+	descrResult, err := snmp.WalkAll(oidIfDescr)
+	if err != nil {
+		return interfaces
+	}
+
+	for i, pdu := range descrResult {
+		ifIndex := i + 1
+		name := ""
+		if bytes, ok := pdu.Value.([]byte); ok {
+			name = string(bytes)
+		} else if str, ok := pdu.Value.(string); ok {
+			name = str
+		}
+
+		ifStats := IfStats{Name: name}
+
+		// 获取入流量
+		inOctets, _ := snmp.Get([]string{oidIfInOctets + "." + string(rune(ifIndex))})
+		if len(inOctets.Variables) > 0 {
+			if val, ok := inOctets.Variables[0].Value.(uint); ok {
+				ifStats.InBytes = int64(val)
+			}
+		}
+
+		// 获取出流量
+		outOctets, _ := snmp.Get([]string{oidIfOutOctets + "." + string(rune(ifIndex))})
+		if len(outOctets.Variables) > 0 {
+			if val, ok := outOctets.Variables[0].Value.(uint); ok {
+				ifStats.OutBytes = int64(val)
+			}
+		}
+
+		// 获取接口状态
+		operStatus, _ := snmp.Get([]string{oidIfOperStatus + "." + string(rune(ifIndex))})
+		if len(operStatus.Variables) > 0 {
+			if val, ok := operStatus.Variables[0].Value.(int); ok {
+				if val == 1 {
+					ifStats.Status = "up"
+				} else {
+					ifStats.Status = "down"
+				}
+			}
+		}
+
+		interfaces = append(interfaces, ifStats)
+	}
+
+	return interfaces
 }
