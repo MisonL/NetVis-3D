@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  # PostgreSQL 数据库
+  # PostgreSQL 数据库 (with TimescaleDB)
   postgres:
-    image: postgres:16-alpine
+    image: timescale/timescaledb:latest-pg16
     container_name: netvis-postgres
     environment:
       POSTGRES_USER: netvis
