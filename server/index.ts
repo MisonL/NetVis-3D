@@ -136,7 +136,7 @@ app.route('/api/port-mapping', portMappingRoutes);
 app.route('/api/firmware', firmwareRoutes);
 app.route('/api/links', linkMonitorRoutes);
 app.route('/api/device-templates', deviceTemplateRoutes);
-app.route('/api/logs', logAnalysisRoutes);
+app.route('/api/log-analysis', logAnalysisRoutes);
 app.route('/api/network-tools', networkToolsRoutes);
 app.route('/api/events', eventBusRoutes);
 app.route('/api/datacenters', dataCenterRoutes);
@@ -147,7 +147,6 @@ app.route('/api/cache', cacheRoutes);
 app.route('/api/diagnostics', networkDiagnosticsRoutes);
 app.route('/api/acl', accessControlRoutes);
 app.route('/api/rate-limit', rateLimitRoutes);
-app.route('/api/workflows', workflowRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径
