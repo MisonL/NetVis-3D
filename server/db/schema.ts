@@ -330,6 +330,30 @@ export const upgradeJobDevices = pgTable('upgrade_job_devices', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+// 合规规则表
+export const complianceRules = pgTable('compliance_rules', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  description: text('description'),
+  ruleType: text('rule_type').notNull(), // 'must_contain', 'must_not_contain', 'regex'
+  content: text('content').notNull(), // The string or regex to match
+  category: text('category').default('custom'), // security, config, inventory
+  severity: text('severity').notNull().default('warning'), // critical, warning, info
+  deviceType: text('device_type'), // Applies to specific vendors/types (e.g. 'cisco')
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// 合规检查结果
+export const complianceResults = pgTable('compliance_results', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  deviceId: uuid('device_id').references(() => devices.id).notNull(),
+  configBackupId: uuid('config_backup_id').references(() => configBackups.id).notNull(), // Check against specific config version
+  ruleId: uuid('rule_id').references(() => complianceRules.id).notNull(),
+  status: text('status').notNull(), // 'pass', 'fail'
+  details: text('details'), // Failure reason or match details
+  checkedAt: timestamp('checked_at').notNull().defaultNow(),
+});
+
 // 类型导出
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -353,3 +377,5 @@ export type TopologyLink = typeof topologyLinks.$inferSelect;
 export type Firmware = typeof firmwares.$inferSelect;
 export type UpgradeJob = typeof upgradeJobs.$inferSelect;
 export type UpgradeJobDevice = typeof upgradeJobDevices.$inferSelect;
+export type ComplianceRule = typeof complianceRules.$inferSelect;
+export type ComplianceResult = typeof complianceResults.$inferSelect;
