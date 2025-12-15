@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Table, Button, Space, Tag, Badge, Card, Typography, Tabs, 
-  Select, message, Modal, Descriptions, Timeline, Tooltip 
+  Select, message, Modal, Descriptions, Timeline, Tooltip, Empty 
 } from 'antd';
 import { 
   BellOutlined, CheckCircleOutlined, ExclamationCircleOutlined,
@@ -385,6 +385,7 @@ const AlertCenter = () => {
               disabled: record.status === 'resolved', // 已解决的不可选
             }),
           }}
+          locale={{ emptyText: <Empty description="暂无告警记录" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
           pagination={{
             ...pagination,
             showSizeChanger: true,

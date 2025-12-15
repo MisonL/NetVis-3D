@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Table, Button, Space, Input, Tag, Modal, Form, 
-  Select, message, Popconfirm, Card, Typography, Switch 
+  Select, message, Popconfirm, Card, Typography, Switch, Empty 
 } from 'antd';
 import { 
   PlusOutlined, EditOutlined, DeleteOutlined, 
@@ -233,6 +233,7 @@ const UserManagement = () => {
           dataSource={users}
           rowKey="id"
           loading={loading}
+          locale={{ emptyText: <Empty description="暂无用户数据" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
           pagination={{
             ...pagination,
             showSizeChanger: true,
