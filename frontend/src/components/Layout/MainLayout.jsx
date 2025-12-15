@@ -102,6 +102,8 @@ import LinkMonitor from '../Link/LinkMonitor';
 import DeviceTemplateManagement from '../Template/DeviceTemplateManagement';
 import LogAnalysis from '../Log/LogAnalysis';
 import NetworkTools from '../Tools/NetworkTools';
+import EventBusManagement from '../Event/EventBusManagement';
+import DataCenterManagement from '../DataCenter/DataCenterManagement';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLicense } from '../../context/LicenseContext';
@@ -218,6 +220,8 @@ const MainLayout = () => {
       case '56': return <DeviceTemplateManagement />;
       case '57': return <LogAnalysis />;
       case '58': return <NetworkTools />;
+      case '59': return <EventBusManagement />;
+      case '60': return <DataCenterManagement />;
       default: return <Dashboard />;
     }
   };

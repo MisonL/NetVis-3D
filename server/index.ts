@@ -60,6 +60,8 @@ import { linkMonitorRoutes } from './routes/link-monitor';
 import { deviceTemplateRoutes } from './routes/device-template';
 import { logAnalysisRoutes } from './routes/log-analysis';
 import { networkToolsRoutes } from './routes/network-tools';
+import { eventBusRoutes } from './routes/event-bus';
+import { dataCenterRoutes } from './routes/datacenter';
 
 const app = new Hono();
 
@@ -129,6 +131,8 @@ app.route('/api/links', linkMonitorRoutes);
 app.route('/api/device-templates', deviceTemplateRoutes);
 app.route('/api/logs', logAnalysisRoutes);
 app.route('/api/network-tools', networkToolsRoutes);
+app.route('/api/events', eventBusRoutes);
+app.route('/api/datacenters', dataCenterRoutes);
 app.route('/api', healthRoutes);
 
 // 根路径
