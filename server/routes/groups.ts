@@ -37,7 +37,7 @@ const defaultGroups = [
 defaultGroups.forEach(g => {
   deviceGroups.set(g.id, {
     ...g,
-    deviceCount: Math.floor(Math.random() * 20),
+    deviceCount: 0, // 将由实际数据库查询更新
     createdAt: new Date(),
     updatedAt: new Date(),
   });

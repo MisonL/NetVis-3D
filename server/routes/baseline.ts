@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db, schema } from '../db';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 import { authMiddleware, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../middleware/auth';
 
@@ -40,16 +40,53 @@ baselineRoutes.get('/device/:deviceId', authMiddleware, async (c) => {
       return c.json({ code: 404, message: '设备不存在' }, 404);
     }
 
-    // 生成模拟基线数据
-    const baselines = defaultMetrics.map(metric => ({
-      id: `${deviceId}-${metric}`,
+    // 从deviceMetrics聚合真实基线数据（过去7天）
+    const metricsResult = await db.execute(sql`
+      SELECT 
+        'cpu' as metric_type,
+        AVG(cpu_usage)::numeric(10,2) as avg_value,
+        MIN(cpu_usage)::numeric(10,2) as min_value,
+        MAX(cpu_usage)::numeric(10,2) as max_value,
+        STDDEV(cpu_usage)::numeric(10,2) as std_dev,
+        COUNT(*) as sample_count
+      FROM ${schema.deviceMetrics}
+      WHERE device_id = ${deviceId}
+        AND timestamp > NOW() - INTERVAL '7 days'
+      UNION ALL
+      SELECT 
+        'memory' as metric_type,
+        AVG(memory_usage)::numeric(10,2),
+        MIN(memory_usage)::numeric(10,2),
+        MAX(memory_usage)::numeric(10,2),
+        STDDEV(memory_usage)::numeric(10,2),
+        COUNT(*)
+      FROM ${schema.deviceMetrics}
+      WHERE device_id = ${deviceId}
+        AND timestamp > NOW() - INTERVAL '7 days'
+      UNION ALL
+      SELECT 
+        'latency' as metric_type,
+        AVG(latency)::numeric(10,2),
+        MIN(latency)::numeric(10,2),
+        MAX(latency)::numeric(10,2),
+        STDDEV(latency)::numeric(10,2),
+        COUNT(*)
+      FROM ${schema.deviceMetrics}
+      WHERE device_id = ${deviceId}
+        AND timestamp > NOW() - INTERVAL '7 days'
+    `);
+
+    // @ts-ignore
+    const rows = (metricsResult.rows || metricsResult) as any[];
+    const baselines = rows.map((row: any) => ({
+      id: `${deviceId}-${row.metric_type}`,
       deviceId,
-      metricType: metric,
-      avgValue: Math.floor(Math.random() * 50) + 20,
-      minValue: Math.floor(Math.random() * 20),
-      maxValue: Math.floor(Math.random() * 30) + 70,
-      stdDev: Math.random() * 10,
-      sampleCount: Math.floor(Math.random() * 1000) + 500,
+      metricType: row.metric_type,
+      avgValue: Number(row.avg_value || 0),
+      minValue: Number(row.min_value || 0),
+      maxValue: Number(row.max_value || 0),
+      stdDev: Number(row.std_dev || 0),
+      sampleCount: Number(row.sample_count || 0),
       period: '7d',
       createdAt: new Date(Date.now() - 7 * 24 * 3600000),
       updatedAt: new Date(),
@@ -64,6 +101,7 @@ baselineRoutes.get('/device/:deviceId', authMiddleware, async (c) => {
       },
     });
   } catch (error) {
+    console.error('Get device baseline error:', error);
     return c.json({ code: 500, message: '获取基线失败' }, 500);
   }
 });
@@ -71,16 +109,41 @@ baselineRoutes.get('/device/:deviceId', authMiddleware, async (c) => {
 // 获取基线概览
 baselineRoutes.get('/overview', authMiddleware, async (c) => {
   try {
-    const devices = await db.select().from(schema.devices).limit(20);
+    const devices = await db.select().from(schema.devices);
+    const totalDevices = devices.length;
+
+    // 统计有指标数据的设备数
+    const devicesWithDataResult = await db.execute(sql`
+      SELECT COUNT(DISTINCT device_id) as count 
+      FROM ${schema.deviceMetrics}
+      WHERE timestamp > NOW() - INTERVAL '7 days'
+    `);
+    // @ts-ignore
+    const devicesWithBaseline = Number((devicesWithDataResult.rows || devicesWithDataResult)[0]?.count || 0);
+
+    // 统计超出基线的设备(CPU>80% 或 Memory>85%)
+    const alertsResult = await db.execute(sql`
+      SELECT 
+        COUNT(*) FILTER (WHERE cpu_usage > 80 OR memory_usage > 85) as above,
+        COUNT(*) FILTER (WHERE cpu_usage < 10 AND memory_usage < 20) as below
+      FROM (
+        SELECT device_id, AVG(cpu_usage) as cpu_usage, AVG(memory_usage) as memory_usage
+        FROM ${schema.deviceMetrics}
+        WHERE timestamp > NOW() - INTERVAL '5 minutes'
+        GROUP BY device_id
+      ) subq
+    `);
+    // @ts-ignore
+    const alertRow = (alertsResult.rows || alertsResult)[0] || {};
 
     const overview = {
-      totalDevices: devices.length,
-      devicesWithBaseline: Math.floor(devices.length * 0.8),
-      metricsTracked: defaultMetrics.length,
+      totalDevices,
+      devicesWithBaseline,
+      metricsTracked: 3, // cpu, memory, latency
       lastCalculated: new Date(),
       alerts: {
-        aboveBaseline: Math.floor(Math.random() * 10),
-        belowBaseline: Math.floor(Math.random() * 5),
+        aboveBaseline: Number(alertRow.above || 0),
+        belowBaseline: Number(alertRow.below || 0),
       },
     };
 
@@ -89,9 +152,9 @@ baselineRoutes.get('/overview', authMiddleware, async (c) => {
       deviceId: d.id,
       deviceName: d.name,
       status: d.status,
-      hasBaseline: Math.random() > 0.2,
-      deviations: Math.floor(Math.random() * 3),
-      lastUpdated: new Date(Date.now() - Math.random() * 24 * 3600000),
+      hasBaseline: true, // 如果有deviceMetrics表则认为有基线
+      deviations: 0,
+      lastUpdated: d.updatedAt || new Date(),
     }));
 
     return c.json({
@@ -102,6 +165,7 @@ baselineRoutes.get('/overview', authMiddleware, async (c) => {
       },
     });
   } catch (error) {
+    console.error('Get baseline overview error:', error);
     return c.json({ code: 500, message: '获取基线概览失败' }, 500);
   }
 });

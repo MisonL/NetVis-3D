@@ -230,22 +230,50 @@ capacityRoutes.get('/forecast', authMiddleware, async (c) => {
   }
 });
 
-// 资源瓶颈分析
+// 资源瓶颈分析 - 真实数据
 capacityRoutes.get('/bottlenecks', authMiddleware, async (c) => {
-  const devices = await db.select().from(schema.devices).limit(10);
+  try {
+    // 查询过去5分钟内资源使用率超过阈值的设备
+    const bottleneckResult = await db.execute(sql`
+      SELECT 
+        d.id as device_id,
+        d.name as device_name,
+        d.ip_address as ip,
+        AVG(m.cpu_usage)::numeric(10,2) as cpu_avg,
+        AVG(m.memory_usage)::numeric(10,2) as mem_avg
+      FROM ${schema.deviceMetrics} m
+      JOIN ${schema.devices} d ON m.device_id = d.id
+      WHERE m.timestamp > NOW() - INTERVAL '5 minutes'
+      GROUP BY d.id, d.name, d.ip_address
+      HAVING AVG(m.cpu_usage) > 70 OR AVG(m.memory_usage) > 75
+      ORDER BY GREATEST(AVG(m.cpu_usage), AVG(m.memory_usage)) DESC
+      LIMIT 20
+    `);
 
-  const bottlenecks = devices.map(d => ({
-    deviceId: d.id,
-    deviceName: d.name,
-    ip: d.ipAddress,
-    bottleneck: ['cpu', 'memory', 'bandwidth', 'disk'][Math.floor(Math.random() * 4)],
-    currentUsage: Math.floor(Math.random() * 20 + 75),
-    threshold: 80,
-    recommendation: '建议升级或分流',
-    severity: Math.random() > 0.5 ? 'warning' : 'critical',
-  })).filter(() => Math.random() > 0.6); // 随机筛选部分设备
+    // @ts-ignore
+    const rows = (bottleneckResult.rows || bottleneckResult) as any[];
+    const bottlenecks = rows.map((row: any) => {
+      const cpuAvg = Number(row.cpu_avg || 0);
+      const memAvg = Number(row.mem_avg || 0);
+      const isCpu = cpuAvg >= memAvg;
+      
+      return {
+        deviceId: row.device_id,
+        deviceName: row.device_name,
+        ip: row.ip || '-',
+        bottleneck: isCpu ? 'cpu' : 'memory',
+        currentUsage: Math.round(isCpu ? cpuAvg : memAvg),
+        threshold: isCpu ? 70 : 75,
+        recommendation: isCpu ? '建议优化进程或升级CPU' : '建议增加内存或优化应用',
+        severity: (isCpu ? cpuAvg : memAvg) > 90 ? 'critical' : 'warning',
+      };
+    });
 
-  return c.json({ code: 0, data: bottlenecks });
+    return c.json({ code: 0, data: bottlenecks });
+  } catch (error) {
+    console.error('Get bottlenecks error:', error);
+    return c.json({ code: 500, message: '获取瓶颈分析失败' }, 500);
+  }
 });
 
 // 扩容建议
