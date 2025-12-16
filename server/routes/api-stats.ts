@@ -27,33 +27,8 @@ const apiCalls: Array<{
   timestamp: Date;
 }> = [];
 
-// 模拟生成API调用记录
-const generateMockApiCalls = () => {
-  const endpoints = [
-    '/api/devices', '/api/alerts', '/api/topology', '/api/metrics',
-    '/api/users', '/api/reports', '/api/config', '/api/health'
-  ];
-  const methods = ['GET', 'POST', 'PUT', 'DELETE'];
-  const now = Date.now();
-
-  for (let i = 0; i < 500; i++) {
-    const isError = Math.random() < 0.05;
-    apiCalls.push({
-      id: crypto.randomUUID(),
-      endpoint: endpoints[Math.floor(Math.random() * endpoints.length)] || '/api/unknown',
-      method: methods[Math.floor(Math.random() * (i < 400 ? 2 : 4))] || 'GET',
-      statusCode: isError ? ([400, 401, 403, 500][Math.floor(Math.random() * 4)] || 500) : 200,
-      responseTime: Math.random() * 200 + 10,
-      ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
-      userAgent: 'Mozilla/5.0',
-      timestamp: new Date(now - i * 60000 * Math.random() * 5),
-    });
-  }
-
-  apiCalls.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-};
-
-generateMockApiCalls();
+// API调用记录存储 (TODO: Persist to DB)
+// const apiCalls: Array<...> = [];
 
 // 获取API调用统计概览
 apiStatsRoutes.get('/overview', authMiddleware, requireRole('admin'), async (c) => {

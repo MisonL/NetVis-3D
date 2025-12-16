@@ -52,6 +52,9 @@ export const devices = pgTable('devices', {
   location: text('location'),
   groupId: uuid('group_id'),
   status: text('status').notNull().default('unknown'), // online, offline, warning, error
+  snmpEnabled: boolean('snmp_enabled').notNull().default(false),
+  snmpCommunity: text('snmp_community').default('public'),
+  snmpVersion: text('snmp_version').default('v2c'),
   lastSeen: timestamp('last_seen'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -97,7 +100,18 @@ export const alerts = pgTable('alerts', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-// License表
+// 发现任务表
+export const discoveryTasks = pgTable('discovery_tasks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  network: text('network').notNull(),
+  status: text('status').notNull().default('pending'), // pending, running, completed, failed
+  progress: integer('progress').notNull().default(0),
+  foundDevices: integer('found_devices').notNull().default(0),
+  result: text('result'), // JSON string of found devices
+  error: text('error'),
+  startedAt: timestamp('started_at').notNull().defaultNow(),
+  completedAt: timestamp('completed_at'),
+});
 export const licenses = pgTable('licenses', {
   id: uuid('id').primaryKey().defaultRandom(),
   licenseKey: text('license_key').notNull().unique(),
@@ -422,3 +436,13 @@ export type ComplianceRule = typeof complianceRules.$inferSelect;
 export type ComplianceResult = typeof complianceResults.$inferSelect;
 export type SyslogMessage = typeof syslogMessages.$inferSelect;
 export type SnmpTemplate = typeof snmpTemplates.$inferSelect;
+
+// 告警抑制表
+export const alertSuppressions = pgTable('alert_suppressions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ruleId: text('rule_id').notNull(), // 可以是UUID或默认字符串ID
+  deviceId: uuid('device_id').notNull(), // Optionally reference devices
+  suppressUntil: timestamp('suppress_until').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+export type AlertSuppression = typeof alertSuppressions.$inferSelect;

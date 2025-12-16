@@ -82,7 +82,7 @@ const app = new Hono<{
 app.use('*', logger());
 app.use('*', prettyJSON());
 app.use('*', cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:8080'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:8080', 'http://localhost:21800'],
   credentials: true,
 }));
 
@@ -184,6 +184,7 @@ app.notFound((c) => {
 // Phase 15 Services
 import { initSystemSettings } from './routes/sys-config';
 import { alertScheduler } from './services/alert-scheduler';
+import { snmpCollector } from './services/snmp-collector';
 
 const port = process.env.PORT || 3001;
 
@@ -192,7 +193,8 @@ const port = process.env.PORT || 3001;
     try {
         await initSystemSettings();
         await alertScheduler.start();
-        console.log('[System] Phase 15 Services Initialized (SysConfig, AlertScheduler)');
+        await snmpCollector.start();
+        console.log('[System] Phase 15 Services Initialized (SysConfig, AlertScheduler, SnmpCollector)');
     } catch (e) {
         console.error('Failed to init services:', e);
     }
@@ -204,8 +206,6 @@ export default {
   port: Number(port),
   fetch: app.fetch,
 };
-
-console.log('🚀 NetVis Pro API Server running on http://localhost:21301');
 
 // Start Syslog Server
 import { SyslogServer } from './services/syslog-server';

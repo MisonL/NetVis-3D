@@ -132,16 +132,9 @@ configRoutes.post(
         }
       }
 
-      // 如果SSH失败，使用模拟配置
+      // 如果SSH失败，报错而不是使用模拟数据
       if (!configContent!) {
-        configContent = `! Configuration for ${device.name}
-hostname ${device.name}
-!
-interface GigabitEthernet0/0
- ip address ${device.ipAddress || "192.168.1.1"} 255.255.255.0
- no shutdown
-!
-end`;
+         return c.json({ code: 500, message: "无法获取设备配置，SSH连接失败或未返回数据" }, 500);
       }
 
       const hash = crypto.createHash("md5").update(configContent).digest("hex");

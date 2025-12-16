@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db, schema } from '../db';
-import { eq, desc, and, count } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { authMiddleware, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../middleware/auth';
 
@@ -12,25 +12,15 @@ const discoveryRoutes = new Hono<{
   };
 }>();
 
-// 发现任务状态存储（实际应使用Redis）
-const discoveryTasks = new Map<string, {
-  id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  network: string;
-  progress: number;
-  foundDevices: number;
-  startedAt: Date;
-  completedAt?: Date;
-  error?: string;
-  results: Array<{
-    ip: string;
-    hostname?: string;
-    type: string;
-    vendor?: string;
-    status: 'online' | 'offline';
-    ports: number[];
-  }>;
-}>();
+// 结果类型定义
+interface DiscoveryResult {
+  ip: string;
+  hostname?: string;
+  type: string;
+  vendor?: string;
+  status: 'online' | 'offline';
+  ports: number[];
+}
 
 // 启动发现任务的Schema
 const startDiscoverySchema = z.object({
@@ -43,9 +33,11 @@ const startDiscoverySchema = z.object({
 // 获取发现任务列表
 discoveryRoutes.get('/tasks', authMiddleware, requireRole('admin'), async (c) => {
   try {
-    const tasks = Array.from(discoveryTasks.values())
-      .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
-      .slice(0, 20);
+    const tasks = await db
+      .select()
+      .from(schema.discoveryTasks)
+      .orderBy(desc(schema.discoveryTasks.startedAt))
+      .limit(20);
 
     return c.json({
       code: 0,
@@ -72,50 +64,37 @@ discoveryRoutes.post('/start', authMiddleware, requireRole('admin'), zValidator(
   const currentUser = c.get('user');
 
   try {
-    const taskId = crypto.randomUUID();
-    
-    // 创建任务 - 使用完整类型定义
-    const task: {
-      id: string;
-      status: 'pending' | 'running' | 'completed' | 'failed';
-      network: string;
-      progress: number;
-      foundDevices: number;
-      startedAt: Date;
-      completedAt?: Date;
-      error?: string;
-      results: Array<{
-        ip: string;
-        hostname?: string;
-        type: string;
-        vendor?: string;
-        status: 'online' | 'offline';
-        ports: number[];
-      }>;
-    } = {
-      id: taskId,
-      status: 'pending',
-      network,
-      progress: 0,
-      foundDevices: 0,
-      startedAt: new Date(),
-      results: [],
-    };
-    
-    discoveryTasks.set(taskId, task);
+    // 1. 创建数据库任务记录
+    const [newTask] = await db
+      .insert(schema.discoveryTasks)
+      .values({
+        network,
+        status: 'pending',
+        progress: 0,
+        foundDevices: 0,
+        result: '[]',
+        startedAt: new Date(),
+      })
+      .returning();
 
-    // 真实异步发现过程
+    const taskId = newTask.id;
+
+    // 2. 异步执行发现过程
     (async () => {
+      let currentResults: DiscoveryResult[] = [];
       try {
-        task.status = 'running';
-        
+        // 更新状态为运行时
+        await db
+          .update(schema.discoveryTasks)
+          .set({ status: 'running' })
+          .where(eq(schema.discoveryTasks.id, taskId));
+
         // 动态导入Node模块
         const { exec } = await import('node:child_process');
         const { Socket } = await import('node:net');
         const util = await import('node:util');
         const execAsync = util.promisify(exec);
 
-        // 端口检测辅助函数
         const checkPort = (ip: string, port: number) => new Promise<boolean>((resolve) => {
           const socket = new Socket();
           socket.setTimeout(1000);
@@ -125,61 +104,60 @@ discoveryRoutes.post('/start', authMiddleware, requireRole('admin'), zValidator(
           socket.connect(port, ip);
         });
 
-        // 解析CIDR获取IP范围
+        // 解析CIDR
         const parts = network.split('/');
         const baseIp = parts[0] || '192.168.1.0';
-        const maskBits = parts[1] || '24';
+        // const maskBits = parts[1] || '24';
         const ipParts = baseIp.split('.').map(Number);
         const totalHosts = Math.min(254, 254); // 限制单次最大扫描254个IP
         
         let scannedCount = 0;
-
-        // 分批扫描，控制并发
         const batchSize = concurrency;
+
         for (let i = 0; i < totalHosts; i += batchSize) {
-          const batchPromises = [];
+          // 检查任务是否被取消 (每次批次前检查数据库状态)
+          const [checkTask] = await db
+            .select({ status: schema.discoveryTasks.status })
+            .from(schema.discoveryTasks)
+            .where(eq(schema.discoveryTasks.id, taskId));
           
+          if (!checkTask || checkTask.status === 'failed' || checkTask.status === 'completed') {
+            break; // 停止执行
+          }
+
+          const batchPromises = [];
           for (let j = 0; j < batchSize && (i + j) < totalHosts; j++) {
             const currentIdx = i + j;
-            // 简单处理/24网段
             const ip3Base = ipParts[3] || 0;
             const targetIp = `${ipParts[0]}.${ipParts[1]}.${ipParts[2]}.${(ip3Base + currentIdx + 1) % 256}`;
             
-            // 跳过广播地址和网关(通常.1) - 这里不做严格排斥，全部扫一遍
-            
             batchPromises.push(async () => {
               try {
-                // 1. Ping检测
+                // Ping
                 try {
-                  // Mac/Linux: -c 1 -W 1 (秒). Windows: -n 1 -w 1000 (毫秒)
-                  // 假设运行在Mac/Linux容器环境
                   await execAsync(`ping -c 1 -W 1 ${targetIp}`);
-                } catch (e) {
-                  return null; // Ping不通，跳过
+                } catch {
+                  return null;
                 }
 
-                // 2. 端口检测
+                // Ports
                 const openPorts: number[] = [];
                 for (const port of scanPorts) {
-                  if (await checkPort(targetIp, port)) {
-                    openPorts.push(port);
-                  }
-                }
-
-                // 3. 识别设备类型
-                let type = 'unknown';
-                let vendor = 'Unknown';
-                
-                if (openPorts.includes(161)) {
-                  type = 'switch'; // 暂定，实际应查SNMP
-                  vendor = 'Cisco'; // 猜测
-                } else if (openPorts.includes(22)) {
-                  type = 'linux';
-                } else if (openPorts.includes(80) || openPorts.includes(443)) {
-                  type = 'server';
+                  if (await checkPort(targetIp, port)) openPorts.push(port);
                 }
 
                 if (openPorts.length > 0) {
+                  let type = 'unknown';
+                  let vendor = 'Unknown';
+                  if (openPorts.includes(161)) {
+                    type = 'switch';
+                    vendor = 'Cisco';
+                  } else if (openPorts.includes(22)) {
+                    type = 'linux';
+                  } else if (openPorts.includes(80) || openPorts.includes(443)) {
+                    type = 'server';
+                  }
+
                   return {
                     ip: targetIp,
                     hostname: `Device-${targetIp}`,
@@ -187,42 +165,56 @@ discoveryRoutes.post('/start', authMiddleware, requireRole('admin'), zValidator(
                     vendor,
                     status: 'online' as const,
                     ports: openPorts
-                  };
+                  } as DiscoveryResult;
                 }
                 return null;
-              } catch (err) {
+              } catch {
                 return null;
               }
             });
           }
 
-          // 执行批次
           const results = await Promise.all(batchPromises.map(p => p()));
           
-          // 收集结果
           results.forEach(res => {
-            if (res) {
-              task.results.push(res);
-              task.foundDevices++;
-            }
+            if (res) currentResults.push(res);
           });
 
           scannedCount += batchPromises.length;
-          task.progress = Math.round((scannedCount / totalHosts) * 100);
-          
-          // 如果任务被取消/失败
-          if ((task.status as string) === 'failed') break;
+          const progress = Math.round((scannedCount / totalHosts) * 100);
+
+          // 更新进度和当前结果到数据库
+          await db
+            .update(schema.discoveryTasks)
+            .set({ 
+              progress,
+              foundDevices: currentResults.length,
+              result: JSON.stringify(currentResults) // 持久化当前结果
+            })
+            .where(eq(schema.discoveryTasks.id, taskId));
         }
 
-        if ((task.status as string) !== 'failed') {
-          task.status = 'completed';
-          task.progress = 100;
-          task.completedAt = new Date();
-        }
+        // 完成
+        await db
+          .update(schema.discoveryTasks)
+          .set({ 
+            status: 'completed',
+            progress: 100,
+            completedAt: new Date(),
+            result: JSON.stringify(currentResults)
+          })
+          .where(eq(schema.discoveryTasks.id, taskId));
+
       } catch (err) {
-        task.status = 'failed';
-        task.error = err instanceof Error ? err.message : '发现过程出错';
-        task.completedAt = new Date();
+        console.error('Discovery task failed:', err);
+        await db
+          .update(schema.discoveryTasks)
+          .set({ 
+            status: 'failed',
+            error: err instanceof Error ? err.message : '发现过程出错',
+            completedAt: new Date()
+          })
+          .where(eq(schema.discoveryTasks.id, taskId));
       }
     })();
 
@@ -246,12 +238,16 @@ discoveryRoutes.post('/start', authMiddleware, requireRole('admin'), zValidator(
   }
 });
 
-// 获取发现任务状态
+// 获取发现任务状态 (包含部分结果)
 discoveryRoutes.get('/tasks/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
-
   try {
-    const task = discoveryTasks.get(id);
+    const [task] = await db
+      .select()
+      .from(schema.discoveryTasks)
+      .where(eq(schema.discoveryTasks.id, id))
+      .limit(1);
+
     if (!task) {
       return c.json({ code: 404, message: '任务不存在' }, 404);
     }
@@ -280,24 +276,31 @@ discoveryRoutes.get('/tasks/:id/results', authMiddleware, async (c) => {
   const id = c.req.param('id');
 
   try {
-    const task = discoveryTasks.get(id);
+    const [task] = await db
+      .select()
+      .from(schema.discoveryTasks)
+      .where(eq(schema.discoveryTasks.id, id))
+      .limit(1);
+
     if (!task) {
       return c.json({ code: 404, message: '任务不存在' }, 404);
     }
+
+    const results: DiscoveryResult[] = task.result ? JSON.parse(task.result) : [];
 
     return c.json({
       code: 0,
       data: {
         taskId: task.id,
         status: task.status,
-        devices: task.results,
+        devices: results,
         summary: {
-          total: task.results.length,
-          byType: task.results.reduce((acc, d) => {
+          total: results.length,
+          byType: results.reduce((acc, d) => {
             acc[d.type] = (acc[d.type] || 0) + 1;
             return acc;
           }, {} as Record<string, number>),
-          byVendor: task.results.reduce((acc, d) => {
+          byVendor: results.reduce((acc, d) => {
             if (d.vendor) acc[d.vendor] = (acc[d.vendor] || 0) + 1;
             return acc;
           }, {} as Record<string, number>),
@@ -321,13 +324,18 @@ discoveryRoutes.post('/import', authMiddleware, requireRole('admin'), zValidator
   const currentUser = c.get('user');
 
   try {
-    const task = discoveryTasks.get(taskId);
+    const [task] = await db
+      .select()
+      .from(schema.discoveryTasks)
+      .where(eq(schema.discoveryTasks.id, taskId))
+      .limit(1);
+
     if (!task) {
       return c.json({ code: 404, message: '任务不存在' }, 404);
     }
 
-    // 筛选要导入的设备
-    const devicesToImport = task.results.filter(d => deviceIps.includes(d.ip));
+    const results: DiscoveryResult[] = task.result ? JSON.parse(task.result) : [];
+    const devicesToImport = results.filter(d => deviceIps.includes(d.ip));
     
     let importedCount = 0;
     for (const device of devicesToImport) {
@@ -344,13 +352,13 @@ discoveryRoutes.post('/import', authMiddleware, requireRole('admin'), zValidator
           type: device.type,
           vendor: device.vendor,
           ipAddress: device.ip,
+          macAddress: '', // 发现过程可能未获取MAC
           status: device.status,
         });
         importedCount++;
       }
     }
 
-    // 记录审计日志
     await db.insert(schema.auditLogs).values({
       userId: currentUser.userId,
       action: 'import',
@@ -374,15 +382,25 @@ discoveryRoutes.post('/tasks/:id/stop', authMiddleware, requireRole('admin'), as
   const id = c.req.param('id');
 
   try {
-    const task = discoveryTasks.get(id);
+    const [task] = await db
+      .select()
+      .from(schema.discoveryTasks)
+      .where(eq(schema.discoveryTasks.id, id))
+      .limit(1);
+
     if (!task) {
       return c.json({ code: 404, message: '任务不存在' }, 404);
     }
 
     if (task.status === 'running' || task.status === 'pending') {
-      task.status = 'failed';
-      task.error = '用户手动停止';
-      task.completedAt = new Date();
+      await db
+        .update(schema.discoveryTasks)
+        .set({ 
+          status: 'failed',
+          error: '用户手动停止',
+          completedAt: new Date()
+        })
+        .where(eq(schema.discoveryTasks.id, id));
     }
 
     return c.json({

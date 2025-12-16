@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   # PostgreSQL 数据库 (with TimescaleDB)
@@ -7,7 +7,7 @@ services:
     container_name: netvis-postgres
     environment:
       POSTGRES_USER: netvis
-      POSTGRES_PASSWORD: netvis123
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: netvis
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -45,9 +45,9 @@ services:
       dockerfile: Dockerfile
     container_name: netvis-api
     environment:
-      DATABASE_URL: postgres://netvis:netvis123@postgres:5432/netvis
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-please_change_this_secret_in_production}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
       PORT: 21301
     ports:
       - "21301:21301"
@@ -80,7 +80,7 @@ services:
     container_name: netvis-collector
     environment:
       - NETVIS_API_ENDPOINT=http://api:21301/api
-      - NETVIS_API_TOKEN=${NETVIS_COLLECTOR_TOKEN:-dev-token}
+      - NETVIS_API_TOKEN=${NETVIS_COLLECTOR_TOKEN}
     depends_on:
       - api
     networks:

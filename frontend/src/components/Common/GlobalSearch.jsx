@@ -22,27 +22,22 @@ const GlobalSearch = ({ visible, onClose, onNavigate }) => {
   const performSearch = (query) => {
     setLoading(true);
     
-    // 模拟搜索结果 - 实际应调用API
-    const mockResults = [
-      { type: 'device', title: 'Core-Router-01', subtitle: '192.168.1.1', key: '0' },
-      { type: 'device', title: 'Firewall-Main', subtitle: '192.168.1.2', key: '1' },
-      { type: 'device', title: 'Switch-DC-A', subtitle: '192.168.1.3', key: '2' },
-      { type: 'alert', title: 'CPU 使用率过高', subtitle: 'Core-Router-01', key: '3' },
-      { type: 'alert', title: '内存告警', subtitle: 'Server-DB-01', key: '4' },
-      { type: 'user', title: '管理员', subtitle: 'admin@netvis.local', key: '5' },
-      { type: 'page', title: '系统设置', subtitle: '配置系统参数', key: '6' },
-      { type: 'page', title: '数据分析', subtitle: '查看统计报表', key: '7' },
-    ];
+    // Real Search Implementation
+    // For now, we search within local device cache or call a search endpoint if available
+    // Since we don't have a dedicated global search API yet, we'll placeholder this 
+    // to avoid misleading mock data. In a real scenario, this would call /api/search?q=...
+    
+    // Simulate empty result for now to prevent confusion, or implement basic filtering if data passed in
+    setResults([]);
+    setLoading(false);
 
-    const filtered = mockResults.filter(item => 
-      item.title.toLowerCase().includes(query.toLowerCase()) ||
-      item.subtitle.toLowerCase().includes(query.toLowerCase())
-    );
-
-    setTimeout(() => {
-      setResults(filtered);
-      setLoading(false);
-    }, 200);
+     /* Future Implementation:
+     try {
+       const res = await api.get('/search', { params: { q: query } });
+       setResults(res.data);
+     } catch(e) { console.error(e); }
+     finally { setLoading(false); }
+     */
   };
 
   useEffect(() => {

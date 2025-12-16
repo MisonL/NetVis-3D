@@ -3,7 +3,7 @@ import ForceGraph3D from 'react-force-graph-3d';
 import * as THREE from 'three';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
 import { useSettings } from '../../context/SettingsContext';
-import { useSimulation } from '../../services/SimulationService';
+import { useTopologyData } from '../../hooks/useTopologyData';
 import TopologyControlPanel from './TopologyControlPanel';
 import DeviceDetailDrawer from './DeviceDetailDrawer';
 
@@ -27,6 +27,8 @@ const ICON_SETS = {
 
 const getIconPath = (type, theme) => {
     let key = 'server';
+    if (!type) return ICON_SETS.premium['server'];
+    
     if (type === 'cloud') key = 'cloud';
     else if (type === 'firewall') key = 'firewall';
     else if (type.includes('switch') || type === 'router') key = 'switch';
@@ -48,11 +50,27 @@ const getGeometricColor = (type) => {
     }
 };
 
+const simpleHash = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
+};
+
+const getDeterministicRandom = (id, seedOffset = 0) => {
+    const hash = simpleHash(id + seedOffset.toString());
+    return (hash % 1000) / 1000; // 0 to 1
+};
+
 const TopologyCanvas3D = ({ focusNodeId, onFocusComplete, onSwitchTo2D }) => {
     const fgRef = useRef();
     const { settings } = useSettings();
-    const { devices } = useSimulation(true, settings.refreshRate); // Always enable simulation for now
-    
+    const { nodes: backendNodes, edges: backendEdges, loading } = useTopologyData(settings.refreshRate); // Use Real Data
+    const devices = backendNodes; // Alias
+
     // Local Interaction State
     const [interactionMode, setInteractionMode] = useState('pan');
     
@@ -66,63 +84,58 @@ const TopologyCanvas3D = ({ focusNodeId, onFocusComplete, onSwitchTo2D }) => {
 
     // Compute graph data from devices
     const graphData = useMemo(() => {
-        const nodes = devices.map((device) => {
+        if (loading) return { nodes: [], links: [] };
+
+        const nodes = backendNodes.map((device) => {
            // Fixed Hierarchical Layout - calculate exact positions
            let fx = 0, fy = 0, fz = 0;
            
+           // Simple hierarchical layouting based on role/type if available
+           const type = device.type || 'unknown';
+
            // Tier 1: Cloud (top)
-           if (device.type === 'cloud') {
+           if (type === 'cloud') {
                fx = 0; fy = 300; fz = 0;
            }
            // Tier 2: Firewall
-           else if (device.type === 'firewall') {
+           else if (type === 'firewall') {
                fx = 0; fy = 150; fz = 0;
            }
            // Tier 3: Core Switch
-           else if (device.type === 'core-switch') {
+           else if (type === 'core-switch' || type === 'router') {
                fx = 0; fy = 0; fz = 0;
            }
-           // Tier 4: Aggregation Switches (spread horizontally)
-           else if (device.type.includes('agg')) {
-               const aggIndex = device.id.includes('1') ? -1 : 1;
-               fx = aggIndex * 150; fy = -150; fz = 0;
-           }
-           // Tier 5: Servers/DB (spread in grid)
+           // Tier 4: Aggregation and everything else distributed
            else {
-               if (device.id.includes('web')) {
-                   const webIndex = parseInt(device.id.replace(/\D/g, '')) || 1;
-                   fx = -150 + (webIndex - 2) * 80;
-                   fy = -300;
-                   fz = (webIndex - 2) * 50;
+               // Pseudo-random distribution in a plane below, or strictly layered if recognized
+               if (type.includes('agg')) {
+                    fx = (getDeterministicRandom(device.id, 'x') - 0.5) * 300;
+                    fy = -150;
+                    fz = (getDeterministicRandom(device.id, 'z') - 0.5) * 100;
                } else {
-                   const dbIndex = device.id.includes('master') ? 0 : (device.id.includes('slave') ? 1 : 2);
-                   fx = 150 + (dbIndex - 1) * 80;
-                   fy = -300;
-                   fz = (dbIndex - 1) * 50;
+                    // Servers, DBs, etc.
+                    fx = (getDeterministicRandom(device.id, 'x') - 0.5) * 500;
+                    fy = -300;
+                    fz = (getDeterministicRandom(device.id, 'z') - 0.5) * 300;
                }
            }
    
            return {
                id: device.id,
                ...device,
-               fx, fy, fz  // Fixed positions
+               fy: fy, 
            };
        });
    
-       const links = [
-           { source: 'cloud', target: 'fw-1', traffic: 1 },
-           { source: 'fw-1', target: 'core-sw', traffic: 1 },
-           { source: 'core-sw', target: 'agg-sw-1', traffic: 1 },
-           { source: 'core-sw', target: 'agg-sw-2', traffic: 1 },
-           { source: 'agg-sw-1', target: 'web-1', traffic: 0 },
-           { source: 'agg-sw-1', target: 'web-2', traffic: 1 },
-           { source: 'agg-sw-1', target: 'web-3', traffic: 0 },
-           { source: 'agg-sw-2', target: 'db-master', traffic: 1 },
-           { source: 'agg-sw-2', target: 'db-slave', traffic: 0 },
-           { source: 'agg-sw-2', target: 'storage-1', traffic: 0 },
-       ];
+       const links = backendEdges.map(conn => ({
+           source: conn.source,
+           target: conn.target,
+           traffic: conn.utilization > 0 ? 1 : 0,
+           status: conn.status
+       }));
+
        return { nodes, links };
-    }, [devices]);
+    }, [backendNodes, backendEdges, loading]);
 
     // Update selected device if the data changes in background - REMOVED
 

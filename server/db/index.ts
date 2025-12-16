@@ -3,7 +3,11 @@ import postgres from 'postgres';
 import * as schema from './schema';
 
 // 数据库连接配置
-const connectionString = process.env.DATABASE_URL || 'postgres://netvis:netvis123@localhost:5432/netvis';
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error('CRITICAL: DATABASE_URL not set.');
+  process.exit(1);
+}
 
 // 创建postgres连接
 const client = postgres(connectionString);

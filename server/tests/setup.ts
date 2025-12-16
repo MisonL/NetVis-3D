@@ -83,4 +83,65 @@ mock.module('prom-client', () => ({
   register: { metrics: () => '', contentType: 'text/plain' }
 }));
 
+// 全局Mock drizzle-orm
+const mockDrizzleObj = {
+  driver: {},
+  session: {},
+  dialect: {},
+};
+
+mock.module('drizzle-orm', () => ({
+  eq: () => ({}),
+  ne: () => ({}),
+  gt: () => ({}),
+  gte: () => ({}),
+  lt: () => ({}),
+  lte: () => ({}),
+  and: () => ({}),
+  or: () => ({}),
+  not: () => ({}),
+  desc: () => ({}),
+  asc: () => ({}),
+  inArray: () => ({}),
+  notInArray: () => ({}),
+  isNull: () => ({}),
+  isNotNull: () => ({}),
+  like: () => ({}),
+  ilike: () => ({}),
+  count: () => ({}),
+  max: () => ({}),
+  min: () => ({}),
+  avg: () => ({}),
+  sum: () => ({}),
+  sql: { 
+    raw: (s: string) => s, 
+    join: (a: any[]) => '' 
+  },
+  relations: () => ({}),
+}));
+
+mock.module('drizzle-orm/pg-core', () => ({
+  pgTable: () => ({}),
+  text: () => ({}),
+  uuid: () => ({}),
+  timestamp: () => ({}),
+  boolean: () => ({}),
+  integer: () => ({}),
+  serial: () => ({}),
+  primaryKey: () => ({}),
+  foreignKey: () => ({}),
+  index: () => ({}),
+  uniqueIndex: () => ({}),
+  unique: () => ({}),
+  pgEnum: () => ({}),
+  doublePrecision: () => ({}),
+  json: () => ({}),
+  date: () => ({}),
+  varchar: () => ({}),
+}));
+
+mock.module('drizzle-orm/postgres-js', () => ({
+  drizzle: () => mockDrizzleObj,
+}));
+
 console.log('✓ Test setup loaded: Global mocks applied');

@@ -17,7 +17,7 @@ import * as XLSX from 'xlsx';
 import { Empty } from 'antd'; // Import Empty
 
 const { Dragger } = Upload;
-import { useSimulation } from '../../services/SimulationService';
+import { useDevices } from '../../hooks/useDevices';
 import { useSettings } from '../../context/SettingsContext';
 import DeviceDrawer from './DeviceDrawer';
 import DeviceFormModal from './DeviceFormModal';
@@ -25,8 +25,8 @@ import DeviceFormModal from './DeviceFormModal';
 const DeviceList = ({ onLocate }) => {
     const [searchText, setSearchText] = useState('');
     const { settings } = useSettings();
-    const { devices, updateDevices } = useSimulation(true, settings.refreshRate); 
-    const [loading, setLoading] = useState(false);
+    const { devices, updateDevices, loading: hookLoading, refresh } = useDevices(settings.refreshRate); 
+    const [loading, setLoading] = useState(false); // Local loading state for manual refresh interaction
     const [isImportModalVisible, setIsImportModalVisible] = useState(false);
     
     // 新增状态
@@ -44,9 +44,10 @@ const DeviceList = ({ onLocate }) => {
         device.ip.includes(searchText)
     );
 
-    const handleRefresh = () => {
+    const handleRefresh = async () => {
         setLoading(true);
-        setTimeout(() => setLoading(false), 800);
+        await refresh();
+        setLoading(false);
     };
 
     const handleBatchDelete = () => {
@@ -352,7 +353,7 @@ const DeviceList = ({ onLocate }) => {
                     showTotal: (total) => `共 ${total} 台设备`,
                     showSizeChanger: true 
                 }}
-                loading={loading}
+                loading={loading || hookLoading}
                 scroll={{ x: 1100, y: 'calc(100vh - 280px)' }} // Responsive scroll
                 className="pro-table" // We will style this to be clean
                 style={{ flex: 1 }}

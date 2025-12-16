@@ -32,11 +32,11 @@ licenseRoutes.get('/info', authMiddleware, async (c) => {
         code: 0,
         data: {
           status: 'unlicensed',
-          edition: 'community',
-          modules: ['CORE'],
+          edition: 'development',
+          modules: ['CORE', 'ASSET', 'ALERT', 'SSH', 'CONFIG', 'REPORT', 'AUDIT', 'HA', 'MOBILE', 'API', 'SYSTEM', 'TOOLS', 'ADVANCED', 'BIGSCREEN'],
           limits: {
-            maxDevices: 10,
-            maxUsers: 3,
+            maxDevices: 1000,
+            maxUsers: 100,
           },
           expiresAt: null,
         },
@@ -217,7 +217,7 @@ licenseRoutes.get('/modules', authMiddleware, async (c) => {
       .where(eq(schema.licenses.isActive, true))
       .limit(1);
 
-    const modules = license?.modules || ['CORE'];
+    const modules = license?.modules || ['CORE', 'ASSET', 'ALERT', 'SSH', 'CONFIG', 'REPORT', 'AUDIT', 'HA', 'MOBILE', 'API', 'SYSTEM', 'TOOLS', 'ADVANCED', 'BIGSCREEN'];
 
     const allModules = [
       { code: 'CORE', name: '核心功能', description: '仪表盘+拓扑可视化' },

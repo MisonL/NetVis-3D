@@ -27,7 +27,8 @@ import {
 
 const { Title, Text } = Typography;
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_BASE_URL } from '../../config';
+const API_BASE = API_BASE_URL;
 
 const DataExport = () => {
   const [exportTypes, setExportTypes] = useState([]);

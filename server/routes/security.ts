@@ -54,12 +54,8 @@ const securityPolicies = {
 // 被锁定的用户
 const lockedUsers = new Map<string, { lockedAt: Date; attempts: number }>();
 
-// 添加模拟会话
-const mockSessions = [
-  { sessionId: 's1', userId: '1', username: 'admin', ip: '192.168.1.100', userAgent: 'Chrome/120', loginAt: new Date(Date.now() - 3600000), lastActiveAt: new Date() },
-  { sessionId: 's2', userId: '2', username: 'operator', ip: '192.168.1.101', userAgent: 'Firefox/122', loginAt: new Date(Date.now() - 7200000), lastActiveAt: new Date(Date.now() - 1800000) },
-];
-mockSessions.forEach(s => activeSessions.set(s.sessionId, s));
+// 活跃会话存储 (TODO: Use Redis)
+// const activeSessions = new Map<string, ...>();
 
 // 获取活跃会话列表
 securityRoutes.get('/sessions', authMiddleware, requireRole('admin'), async (c) => {

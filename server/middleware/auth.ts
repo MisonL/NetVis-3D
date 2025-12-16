@@ -1,7 +1,11 @@
 import type { Context, Next } from 'hono';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'netvis-pro-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.warn('WARN: JWT_SECRET not set, using insecure default for development only.');
+}
+const SECRET_KEY = JWT_SECRET || 'dev-unsafe-secret';
 
 export interface JwtPayload {
   userId: string;

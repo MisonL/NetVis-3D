@@ -74,6 +74,14 @@
 
 一切已为您准备就绪。只需一条命令，即可启动整个监控平台。
 
+**⚠️ 首次启动前必读：** 请复制环境变量配置文件并修改默认密码！
+
+```bash
+cp .env.example .env
+# 编辑 .env 文件，修改默认的数据库和 Redis 密码
+vim .env
+```
+
 ```bash
 # 启动所有服务 (Frontend, API, Collector, DB, Cache)
 docker-compose up -d
@@ -93,6 +101,7 @@ docker-compose ps
 
 ```bash
 # 使用高可用配置启动
+# 确保已配置 .env 文件
 docker-compose -f docker-compose.ha.yml up -d
 
 # 执行TimescaleDB迁移

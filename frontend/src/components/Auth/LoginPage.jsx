@@ -57,15 +57,16 @@ const LoginPage = ({ onLoginSuccess }) => {
       }} />
 
       <Card
+        className="login-card"
         style={{
           width: 420,
-          background: 'rgba(255, 255, 255, 0.03)',
+          background: 'rgba(15, 25, 45, 0.85)',
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
           borderRadius: 16,
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
         }}
-        bodyStyle={{ padding: '48px 40px' }}
+        styles={{ body: { padding: '48px 40px', background: 'transparent' } }}
       >
         {/* Logo 和标题 */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
@@ -100,12 +101,7 @@ const LoginPage = ({ onLoginSuccess }) => {
             <Input
               prefix={<UserOutlined style={{ color: 'rgba(255,255,255,0.3)' }} />}
               placeholder="用户名"
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: 8,
-                color: '#fff',
-              }}
+              className="login-input"
             />
           </Form.Item>
 
@@ -116,11 +112,7 @@ const LoginPage = ({ onLoginSuccess }) => {
             <Input.Password
               prefix={<LockOutlined style={{ color: 'rgba(255,255,255,0.3)' }} />}
               placeholder="密码"
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: 8,
-              }}
+              className="login-input"
             />
           </Form.Item>
 

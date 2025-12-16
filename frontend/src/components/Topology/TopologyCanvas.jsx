@@ -8,15 +8,17 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { nodeTypes, edgeTypes, initialPositions } from './flowConfig';
-import { useSimulation } from '../../services/SimulationService';
+import { useTopologyData } from '../../hooks/useTopologyData';
 import { useSettings } from '../../context/SettingsContext';
 import DeviceDetailDrawer from './DeviceDetailDrawer';
 import TopologyControlPanel2D from './TopologyControlPanel2D';
 
 const TopologyCanvas = ({ onSwitchTo3D }) => {
     const { settings } = useSettings();
-    const { devices } = useSimulation(true, settings.refreshRate);
-    
+    // Use Real Data
+    const { nodes: backendNodes, edges: backendEdges, loading } = useTopologyData(settings.refreshRate);
+    const devices = backendNodes; // Alias for compatibility with other components if needed
+
     // Convert simulation devices to ReactFlow nodes
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -33,43 +35,40 @@ const TopologyCanvas = ({ onSwitchTo3D }) => {
 
     // Initial Load & Updates
     useEffect(() => {
+        if (loading) return;
+
         // 1. Map Nodes
-        const flowNodes = devices.map(dev => ({
+        const flowNodes = backendNodes.map(dev => ({
             id: dev.id,
             type: 'device',
-            position: initialPositions[dev.id] || { x: 0, y: 0 },
-            data: { ...dev } // Pass full device data including metrics/status
+            // If we have saved positions in backend, use them. Otherwise default or initialPositions.
+            position: initialPositions[dev.id] || { x: Math.random() * 500, y: Math.random() * 500 }, // Fallback to random if new
+            data: { ...dev } 
         }));
         setNodes(flowNodes);
 
-        // 2. Map Edges (static topology for demo)
-        const flowEdges = [
-             { id: 'e-cloud-fw', source: 'cloud', target: 'fw-1', type: 'network', data: { traffic: 1 }, animated: true },
-             { id: 'e-fw-core', source: 'fw-1', target: 'core-sw', type: 'network', data: { traffic: 1, label: 'Uplink' }, animated: true },
-             { id: 'e-core-agg1', source: 'core-sw', target: 'agg-sw-1', type: 'network', data: { traffic: 1, label: '10G' }, animated: true },
-             { id: 'e-core-agg2', source: 'core-sw', target: 'agg-sw-2', type: 'network', data: { traffic: 1, label: '10G' }, animated: true },
-             { id: 'e-agg1-w1', source: 'agg-sw-1', target: 'web-1', type: 'network', data: { traffic: 0 } },
-             { id: 'e-agg1-w2', source: 'agg-sw-1', target: 'web-2', type: 'network', data: { traffic: 1, label: 'Load' }, animated: true },
-             { id: 'e-agg1-w3', source: 'agg-sw-1', target: 'web-3', type: 'network', data: { traffic: 0 } },
-             { id: 'e-agg2-dbm', source: 'agg-sw-2', target: 'db-master', type: 'network', data: { traffic: 1 }, animated: true },
-             { id: 'e-agg2-dbs', source: 'agg-sw-2', target: 'db-slave', type: 'network', data: { traffic: 0, label: 'Repl' } },
-             { id: 'e-agg2-sto', source: 'agg-sw-2', target: 'storage-1', type: 'network', data: { traffic: 0 } },
-        ];
-        
-        // Dynamic styles for edges based on theme
-        const edgeStyles = {
-            stroke: settings.theme === 'dark' ? '#555' : '#b1b1b7',
-            strokeWidth: 2
-        };
-
-        const styledEdges = flowEdges.map(e => ({
-            ...e,
-            style: edgeStyles
+        // 2. Map Edges
+        const flowEdges = backendEdges.map(conn => ({
+            id: conn.id,
+            source: conn.source,
+            target: conn.target,
+            type: 'network',
+            data: { 
+                traffic: conn.utilization > 50 ? 1 : 0, 
+                label: conn.bandwidth ? `${conn.bandwidth}Mbps` : '',
+                status: conn.status 
+            },
+            animated: conn.status === 'up' && conn.utilization > 0,
+            style: {
+                stroke: conn.status === 'down' ? '#ff4d4f' : (settings.theme === 'dark' ? '#555' : '#b1b1b7'),
+                strokeWidth: 2,
+                strokeDasharray: conn.status === 'down' ? '5 5' : '0'
+            }
         }));
 
-        setEdges(styledEdges);
+        setEdges(flowEdges);
 
-    }, [devices, setNodes, setEdges, settings.theme]);
+    }, [backendNodes, backendEdges, loading, setNodes, setEdges, settings.theme]);
     
     // REMOVED: Effect that caused the error (updating selectedDevice synchronously)
 

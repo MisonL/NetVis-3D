@@ -8,7 +8,7 @@ import {
     ThunderboltOutlined,
     SoundOutlined
 } from '@ant-design/icons';
-import { useSimulation } from '../../services/SimulationService';
+import { useDevices } from '../../hooks/useDevices';
 import { useSettings } from '../../context/SettingsContext';
 
 const { Title, Text } = Typography;
@@ -35,7 +35,7 @@ const GlassCard = ({ children, title, extra, ...props }) => (
 
 const Dashboard = () => {
     const { settings } = useSettings();
-    const { devices } = useSimulation(true, settings.refreshRate);
+    const { devices } = useDevices(settings.refreshRate);
 
     // Compute Metrics
     const totalDevices = devices.length;

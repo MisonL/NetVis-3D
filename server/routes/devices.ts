@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db, schema } from '../db';
-import { eq, desc, count } from 'drizzle-orm';
+import { eq, desc, count, inArray, sql } from 'drizzle-orm';
 import { authMiddleware, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../middleware/auth';
 import { beforeAddDevice } from '../middleware/license';
@@ -334,13 +334,11 @@ deviceRoutes.post('/batch/export', authMiddleware, zValidator('json', z.object({
   try {
     let devices;
     if (ids && ids.length > 0) {
-      // 导出指定设备
-      const results = [];
-      for (const id of ids) {
-        const [device] = await db.select().from(schema.devices).where(eq(schema.devices.id, id));
-        if (device) results.push(device);
-      }
-      devices = results;
+      // 导出指定设备 - Fix N+1 problem using inArray
+      devices = await db
+        .select()
+        .from(schema.devices)
+        .where(inArray(schema.devices.id, ids));
     } else {
       // 导出全部
       devices = await db.select().from(schema.devices);
@@ -374,21 +372,62 @@ deviceRoutes.post('/batch/export', authMiddleware, zValidator('json', z.object({
 // 设备统计接口
 deviceRoutes.get('/stats', authMiddleware, async (c) => {
   try {
-    const devices = await db.select().from(schema.devices);
-    
+    // Use DB aggregation instead of loading all data into memory
+    const totalResult = await db.select({ count: count() }).from(schema.devices);
+    const total = totalResult[0]?.count ?? 0;
+
+    const statusStats = await db
+      .select({
+        status: schema.devices.status,
+        count: count(),
+      })
+      .from(schema.devices)
+      .groupBy(schema.devices.status);
+
+    const typeStats = await db
+      .select({
+        type: schema.devices.type,
+        count: count(),
+      })
+      .from(schema.devices)
+      .groupBy(schema.devices.type);
+
+    const vendorStats = await db
+      .select({
+        vendor: schema.devices.vendor,
+        count: count(),
+      })
+      .from(schema.devices)
+      // Filter out null vendors for cleaner stats
+      .where(sql`${schema.devices.vendor} IS NOT NULL`)
+      .groupBy(schema.devices.vendor);
+
     const stats = {
-      total: devices.length,
-      online: devices.filter(d => d.status === 'online').length,
-      offline: devices.filter(d => d.status === 'offline').length,
-      warning: devices.filter(d => d.status === 'warning').length,
-      error: devices.filter(d => d.status === 'error').length,
+      total,
+      online: 0,
+      offline: 0,
+      warning: 0,
+      error: 0,
       byType: {} as Record<string, number>,
       byVendor: {} as Record<string, number>,
     };
 
-    devices.forEach(d => {
-      stats.byType[d.type] = (stats.byType[d.type] || 0) + 1;
-      if (d.vendor) stats.byVendor[d.vendor] = (stats.byVendor[d.vendor] || 0) + 1;
+    // Fill status counts
+    statusStats.forEach((s) => {
+      if (s.status === 'online') stats.online = s.count;
+      else if (s.status === 'offline') stats.offline = s.count;
+      else if (s.status === 'warning') stats.warning = s.count;
+      else if (s.status === 'error') stats.error = s.count;
+    });
+
+    // Fill type counts
+    typeStats.forEach((t) => {
+      stats.byType[t.type] = t.count;
+    });
+
+    // Fill vendor counts
+    vendorStats.forEach((v) => {
+      if (v.vendor) stats.byVendor[v.vendor] = v.count;
     });
 
     return c.json({ code: 0, data: stats });

@@ -80,15 +80,17 @@ topologyRoutes.get('/graph', authMiddleware, async (c) => {
       group: device.groupId,
     }));
 
-    // 动态判断链路逻辑：如果两端设备有一个Offline，链路视为Down?
-    // 或者直接使用DB中的链路状态。
-    // 为了"高级分析真实化"，我们在这里可以做简单的状态联动：
+    // Create a Map for O(1) lookup
+    const deviceMap = new Map(devices.map(d => [d.id, d]));
+
+    // 动态判断链路逻辑：如果两端设备有一个Offline，链路视为Down
     const edges = allConnections.map(conn => {
-        const sourceDev = devices.find(d => d.id === conn.sourceId);
-        const targetDev = devices.find(d => d.id === conn.targetId);
+        const sourceDev = deviceMap.get(conn.sourceId);
+        const targetDev = deviceMap.get(conn.targetId);
         
         let dynamicStatus = conn.status;
-        if (sourceDev?.status === 'offline' || targetDev?.status === 'offline') {
+        // 如果找不到设备（可能已被删除），则该链路无效或Down
+        if (!sourceDev || !targetDev || sourceDev.status === 'offline' || targetDev.status === 'offline') {
             dynamicStatus = 'down';
         }
 
@@ -99,9 +101,7 @@ topologyRoutes.get('/graph', authMiddleware, async (c) => {
           linkType: conn.linkType,
           status: dynamicStatus,
           bandwidth: conn.bandwidth,
-          // utilization 暂无真实数据源，沿用null或DB值（如果DB有）
-          // DB schema没有utilization列。
-          utilization: 0, // Placeholder
+          utilization: conn.utilization || 0,
         };
     });
 
@@ -289,17 +289,14 @@ topologyRoutes.post('/discover', authMiddleware, requireRole('admin'), async (c)
                     eq(schema.topologyLinks.targetId, target.id)
                 ));
             
+            // LLDP/CDP based discovery logic would go here.
+            // For now, we stub this out to prevent random garbage generation.
+            /* 
             if (existing.length === 0) {
-                await db.insert(schema.topologyLinks).values({
-                    sourceId: source.id,
-                    targetId: target.id,
-                    linkType: ['ethernet', 'fiber', 'wireless'][Math.floor(Math.random() * 3)] as any,
-                    status: 'up',
-                    bandwidth: [100, 1000, 10000][Math.floor(Math.random() * 3)],
-                    utilization: Math.floor(Math.random() * 80),
-                });
-                created++;
+                 await db.insert(schema.topologyLinks).values(...);
+                 created++;
             }
+            */
         }
     }
 

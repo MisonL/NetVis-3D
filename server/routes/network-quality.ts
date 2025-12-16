@@ -63,7 +63,7 @@ networkQualityRoutes.get('/overview', authMiddleware, async (c) => {
 
     const overview = {
       avgLatency: Number(m.avg_latency || 0),
-      avgJitter: Math.floor(Math.random() * 3 + 1), // Jitter暂未采集，保留随机模拟或置0
+      avgJitter: 0, // Jitter暂未采集
       packetLoss: Number(m.avg_loss || 0).toFixed(2),
       availability: Number(m.availability || 100).toFixed(2),
       throughput: 0, // 暂无吞吐量聚合
@@ -200,7 +200,7 @@ networkQualityRoutes.get('/links/:id', authMiddleware, async (c) => {
       availability24h: '99.9', // 可根据up/down时间计算
       bandwidth: link.bandwidth || 1000,
       utilization: 0, // 未采集
-      trend: trend.length > 0 ? trend : generateLatencyData(60), // 如无实际数据则回退模拟
+      trend: trend.length > 0 ? trend : [], // 如无实际数据返回空
     };
 
     return c.json({ code: 0, data: linkDetail });
@@ -349,21 +349,17 @@ networkQualityRoutes.post('/bandwidth-test', authMiddleware, zValidator('json', 
   const { target, duration } = c.req.valid('json');
 
   // 模拟带宽测试结果
+  // Placeholder for real iperf/speedtest execution
   return c.json({
     code: 0,
     data: {
       target,
       duration,
-      download: {
-        speed: Math.floor(Math.random() * 500 + 500),
-        unit: 'Mbps',
-      },
-      upload: {
-        speed: Math.floor(Math.random() * 200 + 300),
-        unit: 'Mbps',
-      },
-      latency: Math.floor(Math.random() * 10 + 5),
-      jitter: Math.floor(Math.random() * 3 + 1),
+      download: { speed: 0, unit: 'Mbps' },
+      upload: { speed: 0, unit: 'Mbps' },
+      latency: 0,
+      jitter: 0,
+      note: 'Bandwidth test requires agent integration'
     },
   });
 });

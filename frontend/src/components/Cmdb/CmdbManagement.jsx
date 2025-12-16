@@ -3,7 +3,8 @@ import { Card, Table, Button, Space, Tag, Typography, Row, Col, Statistic, Tabs 
 import { DatabaseOutlined, ReloadOutlined, CloudServerOutlined, WifiOutlined, SafetyOutlined, LinkOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_BASE_URL } from '../../config';
+const API_BASE = API_BASE_URL;
 
 const CmdbManagement = () => {
   const [assets, setAssets] = useState([]);

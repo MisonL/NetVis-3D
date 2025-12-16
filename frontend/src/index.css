@@ -46,7 +46,7 @@ body.light-mode {
   --bg-app: #f5f5f5;
   --bg-layout: #f0f2f5;
   --bg-sidebar: #ffffff;
-  
+
   --glass-panel-bg: rgba(255, 255, 255, 0.75);
   --glass-panel-border: rgba(0, 0, 0, 0.06);
   --glass-panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
@@ -54,7 +54,7 @@ body.light-mode {
   --glass-sidebar-bg: rgba(255, 255, 255, 0.85);
   --glass-header-bg: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(0, 0, 0, 0.06);
-  
+
   --text-primary: #333333;
   --text-secondary: rgba(0, 0, 0, 0.65);
   --text-tertiary: rgba(0, 0, 0, 0.45);
@@ -62,34 +62,35 @@ body.light-mode {
 
 /* Glass Dropdown (Dark) */
 .glass-dropdown .ant-select-dropdown {
-    background: rgba(22, 33, 50, 0.9) !important;
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(22, 33, 50, 0.9) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Glass Dropdown (Light) */
 .glass-dropdown-light .ant-select-dropdown {
-    background: rgba(255, 255, 255, 0.85) !important;
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* Glass Select (Light) */
 .glass-select-light .ant-select-selector {
-    background-color: rgba(255,255,255,0.6) !important;
-    border: 1px solid rgba(0,0,0,0.1) !important;
-    color: var(--text-primary) !important;
-    border-radius: 6px !important;
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: var(--text-primary) !important;
+  border-radius: 6px !important;
 }
 .glass-select-light .ant-select-selection-placeholder {
-    color: var(--text-tertiary) !important;
+  color: var(--text-tertiary) !important;
 }
 
 body {
   margin: 0;
   padding: 0;
-  font-family: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: var(--bg-app);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
@@ -166,6 +167,102 @@ body {
 }
 .ant-card-head-title {
   color: var(--text-primary) !important;
+}
+
+/* Login Card - Dark Theme Override */
+.login-card.ant-card {
+  background: rgba(15, 25, 45, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+.login-card .ant-card-body {
+  background: transparent !important;
+}
+.login-card .ant-input,
+.login-card .ant-input-password .ant-input {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+}
+.login-card .ant-input::placeholder,
+.login-card .ant-input-password .ant-input::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+.login-card .ant-checkbox-wrapper {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+/* 隐藏输入框外层边框与重置样式 */
+.login-input.ant-input-affix-wrapper,
+.login-input.ant-input,
+.login-input.ant-input-password {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  padding: 8px 12px !important;
+}
+
+/* 移除输入框内部 input 元素的背景、边框和阴影，防止双重边框 */
+.login-input .ant-input,
+.login-input.ant-input-password .ant-input {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #fff !important;
+  border-radius: 0 !important;
+  height: auto !important; /* Fix potential height issues */
+  padding: 0 !important; /* Let wrapper handle padding */
+}
+
+/* 覆盖 Focus 状态 */
+.login-input.ant-input-affix-wrapper:focus,
+.login-input.ant-input-affix-wrapper-focused,
+.login-input.ant-input-password:focus,
+.login-input.ant-input-password-focused,
+.login-input.ant-input:focus {
+  border-color: rgba(22, 119, 255, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1) !important;
+  outline: none !important;
+}
+
+/* 处理浏览器自动填充 (Autofill) 样式 - 使用 Box Shadow 覆盖黄色/白色背景 */
+.login-input input:-webkit-autofill,
+.login-input input:-webkit-autofill:hover,
+.login-input input:-webkit-autofill:focus,
+.login-input input:-webkit-autofill:active {
+  -webkit-text-fill-color: #fff !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(15, 25, 45, 0.95) inset !important; /* Match card bg */
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: #fff;
+}
+
+/* 确保 placeholder 颜色正确 */
+.login-input::placeholder,
+.login-input .ant-input::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* 修复前缀图标样式 */
+.login-input .ant-input-prefix {
+  margin-right: 8px;
+}
+.login-input .ant-input-prefix .anticon {
+  color: rgba(255,255,255,0.3) !important;
+}
+
+/* 修复 Password 输入框后缀图标 (例如眼睛) 的样式 */
+.login-input .ant-input-suffix {
+  margin-left: 8px;
+}
+.login-input .ant-input-suffix .anticon {
+  color: rgba(255,255,255,0.4) !important;
+}
+.login-input .ant-input-suffix .anticon:hover {
+  color: rgba(255,255,255,0.8) !important;
+}
+
+.login-card .ant-form-item-control-input-content {
+  border: none !important;
+  outline: none !important;
 }
 
 /* Glass Tables */
@@ -258,9 +355,15 @@ h5 {
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(255, 77, 79, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 77, 79, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0);
+  }
 }
 
 /* --- Premium Title Effects --- */
@@ -286,7 +389,7 @@ h5 {
   justify-content: center;
   width: auto;
   /* Ensure no overflow clipping happens here */
-  overflow: visible; 
+  overflow: visible;
 }
 
 .netvis-title-wrapper {
@@ -305,16 +408,16 @@ h5 {
   letter-spacing: 4px; /* More spacing for grand look */
   line-height: 1.5; /* Reduced from 1.8 to bring subtitle closer, padding handles clipping */
   text-transform: uppercase;
-  
+
   /* Gradient Text Styling */
-  background: linear-gradient(135deg, #00C6FB 0%, #005BEA 100%);
+  background: linear-gradient(135deg, #00c6fb 0%, #005bea 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  
+
   /* Glow Effect */
   filter: drop-shadow(0 0 15px rgba(0, 198, 251, 0.5));
-  
+
   /* Prevent clipping while keeping layout tight 
      Strategy: large padding for rendering, negative margin to pull layout bounds in 
   */
@@ -329,9 +432,11 @@ h5 {
 
 .netvis-sub-title {
   font-size: 12px;
-  color: var(--text-secondary); /* Changed from var(--text-tertiary) for better visibility */
+  color: var(
+    --text-secondary
+  ); /* Changed from var(--text-tertiary) for better visibility */
   /* Aggressively pull subtitle up to overlap the title's bottom padding */
-  margin-top: -20px !important; 
+  margin-top: -20px !important;
   font-weight: 500;
   letter-spacing: 1px;
   white-space: nowrap;
@@ -340,7 +445,6 @@ h5 {
   position: relative;
   z-index: 2;
 }
-
 
 /* --- Enhanced Statistic Cards --- */
 .ant-statistic-content-value {
@@ -396,21 +500,21 @@ h5 {
 
 /* --- Moved from TopologyControlPanel --- */
 .glass-select .ant-select-selector {
-    background-color: rgba(255,255,255,0.05) !important;
-    border: 1px solid rgba(255,255,255,0.1) !important;
-    color: var(--text-primary) !important;
-    border-radius: 6px !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: var(--text-primary) !important;
+  border-radius: 6px !important;
 }
 .glass-select .ant-select-selection-placeholder {
-    color: var(--text-tertiary) !important;
+  color: var(--text-tertiary) !important;
 }
 .glass-segmented {
-    background: rgba(0,0,0,0.2) !important;
-    color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.2) !important;
+  color: var(--text-secondary);
 }
 .glass-segmented .ant-segmented-item-selected {
-    background-color: rgba(255,255,255,0.1) !important;
-    color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
 }
 
 /* Professional Table Styles */
@@ -425,14 +529,14 @@ h5 {
 
 /* Tabs Overrides */
 .ant-tabs-tab {
-    color: var(--text-secondary) !important;
+  color: var(--text-secondary) !important;
 }
 .ant-tabs-tab-active .ant-tabs-tab-btn {
-    color: var(--primary-color) !important;
+  color: var(--primary-color) !important;
 }
 .ant-tabs-ink-bar {
-    background: var(--primary-color) !important;
+  background: var(--primary-color) !important;
 }
 .ant-form-item-label > label {
-    color: var(--text-secondary) !important;
+  color: var(--text-secondary) !important;
 }

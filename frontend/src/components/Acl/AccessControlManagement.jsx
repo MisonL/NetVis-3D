@@ -3,7 +3,8 @@ import { Card, Table, Button, Space, Tag, Typography, Row, Col, Statistic, Modal
 import { LockOutlined, ReloadOutlined, PlusOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_BASE_URL } from '../../config';
+const API_BASE = API_BASE_URL;
 
 const AccessControlManagement = () => {
   const [rules, setRules] = useState([]);

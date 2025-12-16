@@ -59,7 +59,8 @@ export interface AlertEvent {
 /**
  * 告警抑制记录
  */
-const alertSuppressionMap = new Map<string, Date>();
+// 告警抑制记录 (Now using DB)
+// const alertSuppressionMap = new Map<string, Date>();
 const SUPPRESSION_DURATION = 5 * 60 * 1000; // 5分钟抑制
 
 /**
@@ -226,28 +227,40 @@ export class AlertEngine {
   }
 
   /**
-   * 检查告警抑制
+   * 获取设备当前的告警抑制列表
    */
-  private isAlertSuppressed(deviceId: string, ruleId: string): boolean {
-    const key = `${deviceId}:${ruleId}`;
-    const lastAlert = alertSuppressionMap.get(key);
-    
-    if (lastAlert) {
-      const elapsed = Date.now() - lastAlert.getTime();
-      if (elapsed < SUPPRESSION_DURATION) {
-        return true;
-      }
+  private async getActiveSuppressions(deviceId: string): Promise<Set<string>> {
+    try {
+      const now = new Date();
+      const suppressions = await db
+        .select()
+        .from(schema.alertSuppressions)
+        .where(and(
+          eq(schema.alertSuppressions.deviceId, deviceId),
+          gte(schema.alertSuppressions.suppressUntil, now)
+        ));
+      
+      return new Set(suppressions.map(s => s.ruleId));
+    } catch (error) {
+      console.error('[AlertEngine] Failed to get suppressions:', error);
+      return new Set();
     }
-    
-    return false;
   }
 
   /**
    * 记录告警抑制
    */
-  private recordAlertSuppression(deviceId: string, ruleId: string): void {
-    const key = `${deviceId}:${ruleId}`;
-    alertSuppressionMap.set(key, new Date());
+  private async recordAlertSuppression(deviceId: string, ruleId: string): Promise<void> {
+    try {
+      const suppressUntil = new Date(Date.now() + SUPPRESSION_DURATION);
+      await db.insert(schema.alertSuppressions).values({
+        deviceId,
+        ruleId,
+        suppressUntil,
+      });
+    } catch (error) {
+      console.error('[AlertEngine] Failed to record suppression:', error);
+    }
   }
 
   /**
@@ -256,12 +269,16 @@ export class AlertEngine {
   async evaluateMetrics(metrics: DeviceMetrics): Promise<AlertEvent[]> {
     const alerts: AlertEvent[] = [];
 
+    // 批量获取该设备的当前抑制规则ID
+    const suppressedRuleIds = await this.getActiveSuppressions(metrics.deviceId);
+
     for (const rule of this.rules) {
       if (!rule.enabled) continue;
 
       const triggered = this.evaluateRule(rule, metrics);
       
-      if (triggered && !this.isAlertSuppressed(metrics.deviceId, rule.id)) {
+      // 如果触发且未被抑制
+      if (triggered && !suppressedRuleIds.has(rule.id)) {
         const value = this.getMetricValue(metrics, rule.metric) ?? 0;
         
         const alert: AlertEvent = {
@@ -278,7 +295,8 @@ export class AlertEngine {
         };
 
         alerts.push(alert);
-        this.recordAlertSuppression(metrics.deviceId, rule.id);
+        // Async record suppression (don't block heavily, but await safely)
+        await this.recordAlertSuppression(metrics.deviceId, rule.id);
       }
     }
 
