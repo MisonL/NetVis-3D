@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db, schema } from '../db';
-import { eq, desc, count } from 'drizzle-orm';
+import { eq, desc, count, sql } from 'drizzle-orm';
 import { authMiddleware, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../middleware/auth';
 
@@ -70,22 +70,47 @@ bigscreenRoutes.get('/data', authMiddleware, async (c) => {
       info: alerts.filter(a => a.severity === 'info').length,
     };
 
-    // 模拟流量数据
-    const trafficData = [];
-    for (let i = 23; i >= 0; i--) {
-      trafficData.push({
-        time: `${String(23 - i).padStart(2, '0')}:00`,
-        inbound: Math.floor(Math.random() * 1000) + 500,
-        outbound: Math.floor(Math.random() * 800) + 300,
-      });
-    }
+    // 真实流量趋势 (过去24小时)
+    const trafficResult = await db.execute(sql`
+      SELECT 
+        to_char(timestamp, 'HH24:00') as time,
+        SUM(COALESCE(bytes_in, 0))::bigint as inbound,
+        SUM(COALESCE(bytes_out, 0))::bigint as outbound
+      FROM ${schema.deviceMetrics}
+      WHERE timestamp >= NOW() - INTERVAL '24 hours'
+      GROUP BY 1
+      ORDER BY 1
+    `);
+    
+    // @ts-ignore
+    const trafficRows = trafficResult.rows || trafficResult;
+    const trafficData = trafficRows.map((r: any) => ({
+      time: r.time,
+      inbound: Math.round(Number(r.inbound) / 1024 / 1024), // MB
+      outbound: Math.round(Number(r.outbound) / 1024 / 1024), // MB
+    }));
 
-    // TOP设备
-    const topDevices = devices.slice(0, 5).map(d => ({
-      id: d.id,
-      name: d.name,
-      cpu: Math.floor(Math.random() * 40) + 30,
-      memory: Math.floor(Math.random() * 30) + 40,
+    // 真实TOP设备 (CPU/Memory)
+    const topDevicesResult = await db.execute(sql`
+      SELECT 
+        d.id,
+        d.name,
+        AVG(m.cpu_usage)::int as cpu,
+        AVG(m.memory_usage)::int as memory
+      FROM ${schema.deviceMetrics} m
+      JOIN ${schema.devices} d ON m.device_id = d.id
+      WHERE m.timestamp >= NOW() - INTERVAL '1 hour'
+      GROUP BY d.id, d.name
+      ORDER BY cpu DESC
+      LIMIT 5
+    `);
+
+    // @ts-ignore
+    const topDevices = (topDevicesResult.rows || topDevicesResult).map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      cpu: Number(r.cpu || 0),
+      memory: Number(r.memory || 0),
     }));
 
     return c.json({
@@ -100,6 +125,7 @@ bigscreenRoutes.get('/data', authMiddleware, async (c) => {
       },
     });
   } catch (error) {
+    console.error('Get bigscreen data error:', error);
     return c.json({ code: 500, message: '获取数据失败' }, 500);
   }
 });

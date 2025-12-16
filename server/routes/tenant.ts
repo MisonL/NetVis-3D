@@ -40,7 +40,7 @@ const tenantUsage = new Map<string, {
   { id: 'tenant-3', name: '试用租户', code: 'TRIAL-001', domain: 'trial.netvis.local', contact: '李先生', email: 'li@trial.com', phone: '13800000003', maxDevices: 50, maxUsers: 5, status: 'trial' as const, expireAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
 ].forEach(t => {
   tenants.set(t.id, { ...t, createdAt: new Date() });
-  tenantUsage.set(t.id, { deviceCount: Math.floor(Math.random() * t.maxDevices * 0.6), userCount: Math.floor(Math.random() * t.maxUsers * 0.5), storageUsed: Math.floor(Math.random() * 1000000000), apiCalls: Math.floor(Math.random() * 100000) });
+  tenantUsage.set(t.id, { deviceCount: 0, userCount: 0, storageUsed: 0, apiCalls: 0 });
 });
 
 // 获取租户列表

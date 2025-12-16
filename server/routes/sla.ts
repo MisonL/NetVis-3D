@@ -91,10 +91,10 @@ slaRoutes.get('/reports', authMiddleware, async (c) => {
     policyId: p.id,
     policyName: p.name,
     period: new Date().toISOString().slice(0, 7),
-    availability: p.availabilityTarget - Math.random() * 0.5,
-    avgLatency: Math.floor(Math.random() * 20 + 5),
-    mttr: `${Math.floor(Math.random() * 30 + 10)}min`,
-    status: Math.random() > 0.2 ? 'met' : 'breached',
+    availability: p.availabilityTarget,
+    avgLatency: 20,
+    mttr: '30min',
+    status: 'met',
     generatedAt: new Date(),
   }));
   return c.json({ code: 0, data: reports });
@@ -112,8 +112,8 @@ slaRoutes.get('/dashboard', authMiddleware, async (c) => {
     currentMTTR: '25min',
     trends: Array.from({ length: 7 }, (_, i) => ({
       date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      availability: 99.5 + Math.random() * 0.4,
-      latency: Math.floor(Math.random() * 20 + 10),
+      availability: 99.9,
+      latency: 15,
     })),
   };
   return c.json({ code: 0, data: dashboard });
