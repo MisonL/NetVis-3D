@@ -140,24 +140,74 @@ networkQualityRoutes.get('/links', authMiddleware, async (c) => {
 networkQualityRoutes.get('/links/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
 
-  const linkDetail = {
-    id,
-    sourceDevice: 'Router-01',
-    sourceIp: '192.168.1.1',
-    targetDevice: 'Core-Switch-01',
-    targetIp: '10.0.0.1',
-    currentLatency: Math.floor(Math.random() * 30 + 10),
-    avgLatency24h: Math.floor(Math.random() * 25 + 12),
-    maxLatency24h: Math.floor(Math.random() * 50 + 30),
-    jitter: Math.floor(Math.random() * 5 + 2),
-    packetLoss: (Math.random() * 0.3).toFixed(2),
-    availability24h: (99 + Math.random() * 0.9).toFixed(2),
-    bandwidth: 1000,
-    utilization: Math.floor(Math.random() * 60 + 20),
-    trend: generateLatencyData(60),
-  };
+  try {
+    // 获取链路信息
+    const [link] = await db.select().from(schema.topologyLinks).where(eq(schema.topologyLinks.id, id)).limit(1);
+    if (!link) {
+      return c.json({ code: 404, message: '链路不存在' }, 404);
+    }
 
-  return c.json({ code: 0, data: linkDetail });
+    // 获取源和目标设备
+    const devices = await db.select().from(schema.devices);
+    const deviceMap = new Map(devices.map(d => [d.id, d]));
+    const source = deviceMap.get(link.sourceId);
+    const target = deviceMap.get(link.targetId);
+
+    // 获取过去24小时的目标设备指标
+    const metricsResult = await db.execute(sql`
+      SELECT 
+        AVG(latency)::numeric(10,2) as avg_latency,
+        MAX(latency)::numeric(10,2) as max_latency,
+        AVG(packet_loss)::numeric(10,2) as avg_loss
+      FROM ${schema.deviceMetrics}
+      WHERE device_id = ${link.targetId}
+        AND timestamp > NOW() - INTERVAL '24 hours'
+    `);
+    // @ts-ignore
+    const m = (metricsResult.rows || metricsResult)[0] || {};
+
+    // 获取趋势数据（过去60分钟）
+    const trendResult = await db.execute(sql`
+      SELECT 
+        time_bucket('1 minute', timestamp) as bucket,
+        AVG(latency)::numeric(10,2) as latency,
+        AVG(packet_loss)::numeric(10,2) as loss
+      FROM ${schema.deviceMetrics}
+      WHERE device_id = ${link.targetId}
+        AND timestamp > NOW() - INTERVAL '1 hour'
+      GROUP BY bucket
+      ORDER BY bucket ASC
+    `);
+    // @ts-ignore
+    const trend = (trendResult.rows || trendResult).map((row: any) => ({
+      timestamp: new Date(row.bucket),
+      latency: Number(row.latency || 0),
+      jitter: 0,
+      packetLoss: Number(row.loss || 0),
+    }));
+
+    const linkDetail = {
+      id,
+      sourceDevice: source?.name || 'Unknown',
+      sourceIp: source?.ipAddress || '-',
+      targetDevice: target?.name || 'Unknown',
+      targetIp: target?.ipAddress || '-',
+      currentLatency: Number(m.avg_latency || 0),
+      avgLatency24h: Number(m.avg_latency || 0),
+      maxLatency24h: Number(m.max_latency || 0),
+      jitter: 0, // 未采集
+      packetLoss: Number(m.avg_loss || 0).toFixed(2),
+      availability24h: '99.9', // 可根据up/down时间计算
+      bandwidth: link.bandwidth || 1000,
+      utilization: 0, // 未采集
+      trend: trend.length > 0 ? trend : generateLatencyData(60), // 如无实际数据则回退模拟
+    };
+
+    return c.json({ code: 0, data: linkDetail });
+  } catch (error) {
+    console.error('Get link detail error:', error);
+    return c.json({ code: 500, message: '获取链路详情失败' }, 500);
+  }
 });
 
 // Ping测试

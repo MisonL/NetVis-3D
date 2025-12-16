@@ -23,38 +23,61 @@ const capacityConfig = {
 
 // 容量概览
 capacityRoutes.get('/overview', authMiddleware, async (c) => {
-  const devices = await db.select().from(schema.devices);
-  const deviceCount = devices.length;
+  try {
+    const devices = await db.select().from(schema.devices);
+    const deviceCount = devices.length;
 
-  const overview = {
-    totalDevices: deviceCount,
-    cpuCapacity: {
-      current: Math.floor(Math.random() * 30 + 35),
-      forecast30d: Math.floor(Math.random() * 10 + 40),
-      forecast90d: Math.floor(Math.random() * 15 + 45),
-      trend: 'stable',
-    },
-    memoryCapacity: {
-      current: Math.floor(Math.random() * 20 + 55),
-      forecast30d: Math.floor(Math.random() * 8 + 58),
-      forecast90d: Math.floor(Math.random() * 12 + 62),
-      trend: 'increasing',
-    },
-    bandwidthCapacity: {
-      current: Math.floor(Math.random() * 25 + 45),
-      forecast30d: Math.floor(Math.random() * 10 + 50),
-      forecast90d: Math.floor(Math.random() * 15 + 55),
-      trend: 'increasing',
-    },
-    storageCapacity: {
-      current: Math.floor(Math.random() * 15 + 40),
-      forecast30d: Math.floor(Math.random() * 5 + 42),
-      forecast90d: Math.floor(Math.random() * 8 + 45),
-      trend: 'stable',
-    },
-  };
+    // 从deviceMetrics获取真实的CPU和内存使用率
+    const metricsResult = await db.execute(sql`
+      SELECT 
+        AVG(cpu_usage)::numeric(10,2) as current_cpu,
+        AVG(memory_usage)::numeric(10,2) as current_memory
+      FROM ${schema.deviceMetrics}
+      WHERE timestamp > NOW() - INTERVAL '5 minutes'
+    `);
+    // @ts-ignore
+    const m = (metricsResult.rows || metricsResult)[0] || {};
 
-  return c.json({ code: 0, data: overview });
+    const currentCpu = Number(m.current_cpu || 0);
+    const currentMemory = Number(m.current_memory || 0);
+
+    // 简单预测：基于当前值加上增长因子
+    const cpuGrowthRate = 0.1; // 假设每月增长10%
+    const memGrowthRate = 0.15; // 假设每月增长15%
+
+    const overview = {
+      totalDevices: deviceCount,
+      cpuCapacity: {
+        current: Math.round(currentCpu),
+        forecast30d: Math.min(100, Math.round(currentCpu * (1 + cpuGrowthRate))),
+        forecast90d: Math.min(100, Math.round(currentCpu * (1 + cpuGrowthRate * 3))),
+        trend: currentCpu > 70 ? 'increasing' : 'stable',
+      },
+      memoryCapacity: {
+        current: Math.round(currentMemory),
+        forecast30d: Math.min(100, Math.round(currentMemory * (1 + memGrowthRate))),
+        forecast90d: Math.min(100, Math.round(currentMemory * (1 + memGrowthRate * 3))),
+        trend: currentMemory > 70 ? 'increasing' : 'stable',
+      },
+      bandwidthCapacity: {
+        current: 0, // 带宽利用率需要专门采集
+        forecast30d: 0,
+        forecast90d: 0,
+        trend: 'stable',
+      },
+      storageCapacity: {
+        current: 0, // 存储利用率需要专门采集
+        forecast30d: 0,
+        forecast90d: 0,
+        trend: 'stable',
+      },
+    };
+
+    return c.json({ code: 0, data: overview });
+  } catch (error) {
+    console.error('Get capacity overview error:', error);
+    return c.json({ code: 500, message: '获取容量概览失败' }, 500);
+  }
 });
 
 // 资源使用趋势 (真实数据)
