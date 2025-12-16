@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db, schema } from '../db';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 import { authMiddleware, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../middleware/auth';
 
@@ -36,17 +36,37 @@ cmdbRoutes.get('/assets', authMiddleware, async (c) => {
   const type = c.req.query('type');
   const devices = await db.select().from(schema.devices);
   
-  const assets = devices.map(d => ({
-    id: d.id,
-    name: d.name,
-    type: d.type || 'network',
-    ip: d.ipAddress,
-    status: d.status,
-    vendor: d.vendor,
-    model: d.model,
-    location: d.location,
-    attributes: { cpu: Math.floor(Math.random() * 30 + 20) + '%', uptime: '45d 12h' },
-  }));
+  // 获取每个设备的最新指标
+  const metricsResult = await db.execute(sql`
+    SELECT DISTINCT ON (device_id) 
+      device_id, cpu_usage, memory_usage
+    FROM ${schema.deviceMetrics}
+    ORDER BY device_id, timestamp DESC
+  `);
+  
+  // @ts-ignore
+  const metricsRows = metricsResult.rows || metricsResult;
+  const metricsMap = new Map();
+  metricsRows.forEach((r: any) => metricsMap.set(r.device_id, r));
+  
+  const assets = devices.map(d => {
+    const m = metricsMap.get(d.id);
+    return {
+      id: d.id,
+      name: d.name,
+      type: d.type || 'network',
+      ip: d.ipAddress,
+      status: d.status,
+      vendor: d.vendor,
+      model: d.model,
+      location: d.location,
+      attributes: { 
+        cpu: m ? `${Math.round(Number(m.cpu_usage))}%` : 'N/A', 
+        memory: m ? `${Math.round(Number(m.memory_usage))}%` : 'N/A',
+        uptime: 'UNKNOWN' 
+      },
+    };
+  });
 
   return c.json({ code: 0, data: type ? assets.filter(a => a.type === type) : assets });
 });

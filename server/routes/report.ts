@@ -312,39 +312,72 @@ reportRoutes.post('/generate/performance-analysis', authMiddleware, async (c) =>
   try {
     const { deviceId, metrics, timeRange } = await c.req.json();
 
-    // 模拟性能数据
+    // 真实性能数据聚合
+    const metricsResult = await db.execute(sql`
+      SELECT 
+        AVG(cpu_usage)::numeric(10,2) as avg_cpu,
+        MAX(cpu_usage)::numeric(10,2) as max_cpu,
+        AVG(memory_usage)::numeric(10,2) as avg_mem,
+        MAX(memory_usage)::numeric(10,2) as max_mem,
+        AVG(COALESCE(bytes_in, 0) + COALESCE(bytes_out, 0))::numeric(10,2) as avg_traffic,
+        MAX(COALESCE(bytes_in, 0) + COALESCE(bytes_out, 0))::numeric(10,2) as peak_traffic
+      FROM ${schema.deviceMetrics}
+      WHERE device_id = ${deviceId} 
+        AND timestamp >= NOW() - INTERVAL '24 hours'
+    `);
+
+    // @ts-ignore
+    const m = (metricsResult.rows || metricsResult)[0] || {};
+    
+    // 趋势数据 (过去24小时每小时均值)
+    const trendResult = await db.execute(sql`
+      SELECT 
+        extract(hour from timestamp) as hour,
+        AVG(cpu_usage)::numeric(10,2) as cpu,
+        AVG(memory_usage)::numeric(10,2) as memory,
+        AVG(COALESCE(bytes_in, 0))::numeric(10,2) as inbound,
+        AVG(COALESCE(bytes_out, 0))::numeric(10,2) as outbound
+      FROM ${schema.deviceMetrics}
+      WHERE device_id = ${deviceId} 
+        AND timestamp >= NOW() - INTERVAL '24 hours'
+      GROUP BY 1
+      ORDER BY 1
+    `);
+
+    // @ts-ignore
+    const trendRows = trendResult.rows || trendResult;
+    const trends = {
+      cpu: trendRows.map((r: any) => ({ hour: r.hour, value: Number(r.cpu || 0) })),
+      memory: trendRows.map((r: any) => ({ hour: r.hour, value: Number(r.memory || 0) })),
+      traffic: trendRows.map((r: any) => ({ 
+        hour: r.hour, 
+        inbound: Number(r.inbound || 0),
+        outbound: Number(r.outbound || 0) 
+      })),
+    };
+
+    // 生成建议
+    const recommendations = [];
+    if (Number(m.avg_cpu) > 70) recommendations.push('CPU平均使用率过高，建议排查高负载进程');
+    if (Number(m.max_cpu) > 90) recommendations.push('CPU峰值超过90%，存在性能瓶颈风险');
+    if (Number(m.avg_mem) > 80) recommendations.push('内存使用率较高，建议考虑扩容');
+    if (Number(m.peak_traffic) > 1000 * 1000 * 100) recommendations.push('峰值流量较高，请关注带宽余量'); // >100Mbps
+    if (recommendations.length === 0) recommendations.push('各项性能指标正常');
+
     const performanceData = {
       title: '性能分析报表',
       generatedAt: new Date().toISOString(),
       timeRange,
       summary: {
-        avgCpu: 45.2,
-        maxCpu: 89.5,
-        avgMemory: 62.8,
-        maxMemory: 78.3,
-        avgTraffic: 1250, // Mbps
-        peakTraffic: 3200,
+        avgCpu: Number(m.avg_cpu || 0),
+        maxCpu: Number(m.max_cpu || 0),
+        avgMemory: Number(m.avg_mem || 0),
+        maxMemory: Number(m.max_mem || 0),
+        avgTraffic: Math.round(Number(m.avg_traffic || 0) / 1024 / 1024 * 8), // bits -> Mbps (approx)
+        peakTraffic: Math.round(Number(m.peak_traffic || 0) / 1024 / 1024 * 8),
       },
-      trends: {
-        cpu: Array.from({ length: 24 }, (_, i) => ({
-          hour: i,
-          value: 30 + Math.random() * 50,
-        })),
-        memory: Array.from({ length: 24 }, (_, i) => ({
-          hour: i,
-          value: 50 + Math.random() * 30,
-        })),
-        traffic: Array.from({ length: 24 }, (_, i) => ({
-          hour: i,
-          inbound: 500 + Math.random() * 1500,
-          outbound: 300 + Math.random() * 1000,
-        })),
-      },
-      recommendations: [
-        '建议在业务高峰期前扩容Core-Router-01的内存',
-        'Switch-DC-A流量接近阈值，需关注',
-        '整体CPU使用率正常，无需调整',
-      ],
+      trends,
+      recommendations,
     };
 
     return c.json({
