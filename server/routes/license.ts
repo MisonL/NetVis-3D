@@ -72,8 +72,15 @@ licenseRoutes.get('/info', authMiddleware, async (c) => {
 import fs from 'fs';
 import path from 'path';
 
-const publicKey = fs.readFileSync(path.join(process.cwd(), 'public_key.pem'), 'utf8');
+let publicKey = '';
 let privateKey = '';
+
+try {
+  publicKey = fs.readFileSync(path.join(process.cwd(), 'public_key.pem'), 'utf8');
+} catch (e) {
+  console.warn('Public key not found, license verification will verify against empty key (likely fail) or disabled');
+}
+
 try {
   privateKey = fs.readFileSync(path.join(process.cwd(), 'private_key.pem'), 'utf8');
 } catch (e) {
