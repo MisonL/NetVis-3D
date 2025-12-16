@@ -33,6 +33,18 @@ mock.module('../middleware/auth', () => ({
   requireRole: () => async (c: any, next: any) => await next(),
 }));
 
+mock.module('../middleware/license', () => ({
+  beforeAddDevice: () => Promise.resolve({ allowed: true }),
+  beforeAddUser: () => Promise.resolve({ allowed: true }),
+  getLicenseInfo: () => Promise.resolve({ edition: 'enterprise', modules: ['CORE'], maxDevices: 1000, maxUsers: 100, isActive: true, isExpired: false }),
+  isModuleEnabled: () => Promise.resolve(true),
+  checkDeviceLimit: () => Promise.resolve({ allowed: true, current: 5, max: 1000 }),
+  checkUserLimit: () => Promise.resolve({ allowed: true, current: 3, max: 100 }),
+  requireModule: () => async (c: any, next: any) => await next(),
+  requireValidLicense: () => async (c: any, next: any) => await next(),
+  clearLicenseCache: () => {},
+}));
+
 // List of all route files to smoke test
 const routesToTest = [
   'users',

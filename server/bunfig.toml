@@ -1,0 +1,9 @@
+[test]
+# 使用preload来确保mock在所有测试前生效
+preload = ["./tests/setup.ts"]
+
+# 启用覆盖率报告
+coverage = false
+
+# 测试超时时间（毫秒）
+timeout = 30000

@@ -38,10 +38,23 @@ mock.module('../middleware/auth', () => ({
   requireRole: () => async (c: any, next: any) => await next(),
 }));
 
-// Import routes AFTER mocking
-import { deviceRoutes } from '../routes/devices';
+mock.module('../middleware/license', () => ({
+  beforeAddDevice: () => Promise.resolve({ allowed: true }),
+  beforeAddUser: () => Promise.resolve({ allowed: true }),
+  getLicenseInfo: () => Promise.resolve({ edition: 'enterprise', modules: ['CORE'], maxDevices: 1000, maxUsers: 100, isActive: true, isExpired: false }),
+  isModuleEnabled: () => Promise.resolve(true),
+  checkDeviceLimit: () => Promise.resolve({ allowed: true, current: 5, max: 1000 }),
+  checkUserLimit: () => Promise.resolve({ allowed: true, current: 3, max: 100 }),
+  requireModule: () => async (c: any, next: any) => await next(),
+  requireValidLicense: () => async (c: any, next: any) => await next(),
+  clearLicenseCache: () => {},
+}));
 
-describe('Devices API', () => {
+// Import routes AFTER mocking (dynamic import inside describe)
+
+describe('Devices API', async () => {
+  const { deviceRoutes } = await import('../routes/devices');
+  
   it('GET / - should return paginated device list', async () => {
     const res = await deviceRoutes.request('/');
     expect(res.status).toBe(200);

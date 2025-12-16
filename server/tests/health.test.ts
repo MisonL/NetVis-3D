@@ -29,7 +29,10 @@ mock.module('../middleware/auth', () => ({
 
 // Mock prom-client to avoid metric conflicts
 mock.module('prom-client', () => ({
-  Registry: class { metrics() { return ''; } },
+  Registry: class { 
+    metrics() { return '# HELP test_metric Test\ntest_metric 1'; } 
+    contentType = 'text/plain; version=0.0.4; charset=utf-8';
+  },
   collectDefaultMetrics: () => {},
   Gauge: class { 
     constructor() {} 
@@ -38,7 +41,7 @@ mock.module('prom-client', () => ({
   },
   Counter: class { constructor() {} inc() {} },
   Histogram: class { constructor() {} observe() {} },
-  register: { metrics: () => '' }
+  register: { metrics: () => '', contentType: 'text/plain' }
 }));
 
 // Mock fs to prevent license key loading
