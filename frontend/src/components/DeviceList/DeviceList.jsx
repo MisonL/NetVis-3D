@@ -11,16 +11,19 @@ import {
     AimOutlined,
     SettingOutlined,
     ImportOutlined,
-    InboxOutlined
+    InboxOutlined,
+    EyeOutlined,
+    ExportOutlined
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import { Empty } from 'antd'; // Import Empty
 
-const { Dragger } = Upload;
 import { useDevices } from '../../hooks/useDevices';
 import { useSettings } from '../../context/SettingsContext';
 import DeviceDrawer from './DeviceDrawer';
 import DeviceFormModal from './DeviceFormModal';
+
+const { Dragger } = Upload;
 
 const DeviceList = ({ onLocate }) => {
     const [searchText, setSearchText] = useState('');
@@ -40,8 +43,8 @@ const DeviceList = ({ onLocate }) => {
 
     // Filter logic
     const filteredData = devices.filter(device => 
-        device.label.toLowerCase().includes(searchText.toLowerCase()) || 
-        device.ip.includes(searchText)
+        (device.label?.toLowerCase() || '').includes(searchText.toLowerCase()) || 
+        (device.ip || '').includes(searchText)
     );
 
     const handleRefresh = async () => {
@@ -99,7 +102,7 @@ const DeviceList = ({ onLocate }) => {
                     type: item.type?.toLowerCase() || 'server',
                     status: item.status?.toLowerCase() || 'offline',
                     location: item.location || 'Unknown',
-                    metrics: { cpu: '0%', memory: '0%' }, // Init metrics
+                    metrics: { cpu: 0, memory: 0 }, // Init metrics
                     ...item
                 }));
 

@@ -1,19 +1,16 @@
 # 构建阶段
-FROM node:20-alpine AS builder
+FROM oven/bun:1 AS builder
 WORKDIR /app
 
-# 安装pnpm
-RUN npm install -g pnpm
-
 # 复制依赖文件
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json bun.lockb* ./
+RUN bun install --frozen-lockfile
 
 # 复制源代码
 COPY . .
 
 # 构建
-RUN pnpm run build
+RUN bun run build
 
 # 生产阶段
 FROM nginx:alpine

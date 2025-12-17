@@ -20,7 +20,7 @@ export const useDevices = (refreshRate = 10) => {
                          label: d.name, // Map name to label
                          ip: d.ipAddress, // Map ipAddress to ip
                          // Ensure metrics object exists
-                         metrics: d.metrics || { cpu: '0%', memory: '0%' } 
+                         metrics: d.metrics || { cpu: 0, memory: 0 } 
                      }));
                      setDevices(mapped);
                      setError(null);

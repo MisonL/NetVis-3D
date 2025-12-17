@@ -116,6 +116,66 @@ CREATE TABLE IF NOT EXISTS licenses (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+-- 采集器表
+CREATE TABLE IF NOT EXISTS collectors (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    version TEXT,
+    status TEXT NOT NULL DEFAULT 'offline',
+    last_heartbeat TIMESTAMP,
+    started_at TIMESTAMP,
+    config TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- 设备指标表 (TimescaleDB Hypertable)
+CREATE TABLE IF NOT EXISTS device_metrics (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    device_id UUID REFERENCES devices(id),
+    collector_id TEXT REFERENCES collectors(id),
+    status TEXT NOT NULL,
+    latency INTEGER,
+    packet_loss INTEGER,
+    cpu_usage INTEGER,
+    memory_usage INTEGER,
+    uptime INTEGER,
+    timestamp TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- 启用 Hypertable
+SELECT create_hypertable('device_metrics', 'timestamp', if_not_exists => TRUE);
+
+-- 接口指标表 (TimescaleDB Hypertable)
+CREATE TABLE IF NOT EXISTS interface_metrics (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    device_id UUID REFERENCES devices(id),
+    interface_name TEXT NOT NULL,
+    in_bytes INTEGER,
+    out_bytes INTEGER,
+    in_errors INTEGER,
+    out_errors INTEGER,
+    status TEXT,
+    timestamp TIMESTAMP NOT NULL DEFAULT NOW()
+);
+-- 启用 Hypertable
+SELECT create_hypertable('interface_metrics', 'timestamp', if_not_exists => TRUE);
+
+-- 拓扑连接表
+CREATE TABLE IF NOT EXISTS topology_links (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    source_id UUID NOT NULL REFERENCES devices(id),
+    target_id UUID NOT NULL REFERENCES devices(id),
+    source_port TEXT,
+    target_port TEXT,
+    link_type TEXT NOT NULL DEFAULT 'ethernet',
+    bandwidth INTEGER,
+    utilization INTEGER DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'up',
+    description TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -126,6 +186,8 @@ CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status);
 CREATE INDEX IF NOT EXISTS idx_alerts_device_id ON alerts(device_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_device_metrics_device_id ON device_metrics(device_id);
+CREATE INDEX IF NOT EXISTS idx_device_metrics_timestamp ON device_metrics(timestamp DESC);
 
 -- 插入默认管理员用户 (密码: admin123)
 INSERT INTO users (username, email, password, display_name, role)

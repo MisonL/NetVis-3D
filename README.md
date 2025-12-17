@@ -157,12 +157,13 @@ bun run dev
 
 **3. 启动前端 (Frontend)**
 
+````bash
 ```bash
 cd frontend
-npm install
-npm run dev
+bun install
+bun run dev
 # 前端将运行在 http://localhost:3000
-```
+````
 
 **4. 启动采集器 (Collector)**
 
